@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Baby, LayoutDashboard, Users, ClipboardCheck, MonitorSmartphone, LogOut, Settings } from "lucide-react";
+import { Baby, LayoutDashboard, Users, ClipboardCheck, MonitorSmartphone, LogOut, Settings, History } from "lucide-react";
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const { signOut } = useAuth();
@@ -11,6 +11,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     { to: "/", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/children", icon: Users, label: "Children" },
     { to: "/attendance", icon: ClipboardCheck, label: "Attendance" },
+    { to: "/history", icon: History, label: "History" },
     { to: "/settings", icon: Settings, label: "Settings" },
   ];
 

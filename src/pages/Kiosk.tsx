@@ -83,7 +83,7 @@ const Kiosk = () => {
     }
   };
 
-  const handleAction = async (action: "checkin" | "checkout" | "absent") => {
+  const handleAction = async (action: "checkin" | "checkout" | "school-out" | "school-in" | "absent") => {
     if (!selectedChild) return;
     const today = format(new Date(), "yyyy-MM-dd");
     const now = new Date().toISOString();
@@ -106,18 +106,28 @@ const Kiosk = () => {
       if (existing) {
         if (!existing.check_in_am) {
           await supabase.from("attendance").update({ check_in_am: now }).eq("id", existing.id);
-        } else if (!existing.check_in_pm) {
-          await supabase.from("attendance").update({ check_in_pm: now }).eq("id", existing.id);
         }
       } else {
         await supabase.from("attendance").insert({ child_id: selectedChild.id, date: today, check_in_am: now });
       }
       setMessage(`${selectedChild.name} checked in at ${format(new Date(), "h:mm a")}`);
-    } else {
+    } else if (action === "school-out") {
       if (existing) {
-        if (existing.check_in_am && !existing.check_out_am) {
-          await supabase.from("attendance").update({ check_out_am: now }).eq("id", existing.id);
-        } else if (existing.check_in_pm && !existing.check_out_pm) {
+        await supabase.from("attendance").update({ check_out_am: now }).eq("id", existing.id);
+      } else {
+        await supabase.from("attendance").insert({ child_id: selectedChild.id, date: today, check_out_am: now });
+      }
+      setMessage(`${selectedChild.name} checked out for school at ${format(new Date(), "h:mm a")}`);
+    } else if (action === "school-in") {
+      if (existing) {
+        await supabase.from("attendance").update({ check_in_pm: now }).eq("id", existing.id);
+      } else {
+        await supabase.from("attendance").insert({ child_id: selectedChild.id, date: today, check_in_pm: now });
+      }
+      setMessage(`${selectedChild.name} checked in from school at ${format(new Date(), "h:mm a")}`);
+    } else if (action === "checkout") {
+      if (existing) {
+        if (!existing.check_out_pm) {
           await supabase.from("attendance").update({ check_out_pm: now }).eq("id", existing.id);
         }
       }
@@ -222,6 +232,12 @@ const Kiosk = () => {
             </p>
             <Button className="w-full h-16 text-lg gap-3 bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => handleAction("checkin")}>
               <LogIn className="w-6 h-6" /> Check In
+            </Button>
+            <Button variant="outline" className="w-full h-14 text-lg gap-3" onClick={() => handleAction("school-out")}>
+              <LogOut className="w-6 h-6" /> Check Out for School
+            </Button>
+            <Button variant="outline" className="w-full h-14 text-lg gap-3" onClick={() => handleAction("school-in")}>
+              <LogIn className="w-6 h-6" /> Check In from School
             </Button>
             <Button variant="outline" className="w-full h-16 text-lg gap-3" onClick={() => handleAction("checkout")}>
               <LogOut className="w-6 h-6" /> Check Out
