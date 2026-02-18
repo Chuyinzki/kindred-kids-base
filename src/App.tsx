@@ -9,6 +9,7 @@ import Auth from "@/pages/Auth";
 import Dashboard from "@/pages/Dashboard";
 import Children from "@/pages/Children";
 import Attendance from "@/pages/Attendance";
+import AttendanceHistory from "@/pages/AttendanceHistory";
 import Kiosk from "@/pages/Kiosk";
 import SettingsPage from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/children" element={<ProtectedRoute><Children /></ProtectedRoute>} />
             <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
+            <Route path="/history" element={<ProtectedRoute><AttendanceHistory /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>

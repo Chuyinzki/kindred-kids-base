@@ -166,8 +166,8 @@ const Attendance = () => {
               <tr className="border-b border-border bg-muted/50">
                 <th className="text-left p-3 font-heading font-semibold">Child</th>
                 <th className="text-center p-3 font-heading font-semibold">In AM</th>
-                <th className="text-center p-3 font-heading font-semibold">Out AM</th>
-                <th className="text-center p-3 font-heading font-semibold">In PM</th>
+                <th className="text-center p-3 font-heading font-semibold">Out (School)</th>
+                <th className="text-center p-3 font-heading font-semibold">In (School)</th>
                 <th className="text-center p-3 font-heading font-semibold">Out PM</th>
                 <th className="text-center p-3 font-heading font-semibold">Status</th>
               </tr>
