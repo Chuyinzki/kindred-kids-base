@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format, parseISO, getDaysInMonth } from "date-fns";
-import { ChevronLeft, ChevronRight, Save } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save, X, AlertTriangle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface AttendanceRecord {
   id: string;
@@ -94,6 +95,50 @@ const AttendanceHistory = () => {
     return format(parseISO(ts), "HH:mm");
   };
 
+  const getEffectiveValue = (date: string, field: string): string | null => {
+    const record = getRecord(date);
+    const editForRecord = record ? edits[record.id] : edits[`new-${date}`];
+    if (editForRecord && field in editForRecord) {
+      return editForRecord[field as keyof AttendanceRecord] as string | null;
+    }
+    return (record?.[field as keyof AttendanceRecord] as string | null) ?? null;
+  };
+
+  const validateDay = (date: string): { hasError: boolean; message: string } => {
+    const fields = ["check_in_am", "check_out_am", "check_in_pm", "check_out_pm"] as const;
+    const values = fields.map(f => getEffectiveValue(date, f));
+    const times = values.map(v => (v ? new Date(v).getTime() : null));
+
+    const hasAny = times.some(t => t !== null);
+    if (!hasAny) return { hasError: false, message: "" };
+
+    // Check for gaps (later time set but earlier one missing)
+    for (let i = 1; i < times.length; i++) {
+      if (times[i] !== null) {
+        for (let j = 0; j < i; j++) {
+          if (times[j] === null) {
+            return { hasError: true, message: "Missing earlier time" };
+          }
+        }
+      }
+    }
+
+    // Check chronological order
+    const filled = times.filter((t): t is number => t !== null);
+    for (let i = 1; i < filled.length; i++) {
+      if (filled[i] <= filled[i - 1]) {
+        return { hasError: true, message: "Times out of order" };
+      }
+    }
+
+    // Incomplete: checked in but never checked out
+    if (times[0] !== null && times[1] === null && times[2] === null && times[3] === null) {
+      return { hasError: true, message: "Incomplete — no check-out" };
+    }
+
+    return { hasError: false, message: "" };
+  };
+
   const handleEdit = (date: string, field: string, value: string) => {
     const record = getRecord(date);
     const key = record?.id || `new-${date}`;
@@ -104,6 +149,20 @@ const AttendanceHistory = () => {
         date,
         child_id: selectedChild,
         [field]: value ? new Date(`${date}T${value}`).toISOString() : null,
+      },
+    }));
+  };
+
+  const handleClear = (date: string, field: string) => {
+    const record = getRecord(date);
+    const key = record?.id || `new-${date}`;
+    setEdits(prev => ({
+      ...prev,
+      [key]: {
+        ...prev[key],
+        date,
+        child_id: selectedChild,
+        [field]: null,
       },
     }));
   };
@@ -229,11 +288,26 @@ const AttendanceHistory = () => {
                 const isAbsent = editForRecord?.marked_absent ?? record?.marked_absent ?? false;
                 const { dayOfWeek, dayNum } = getDayLabel(date);
                 const isWeekend = dayOfWeek === "Sat" || dayOfWeek === "Sun";
+                const validation = validateDay(date);
 
                 return (
-                  <tr key={date} className={`border-b border-border last:border-0 ${isWeekend ? "bg-muted/20" : "hover:bg-muted/30"}`}>
+                  <tr key={date} className={`border-b border-border last:border-0 ${validation.hasError ? "bg-destructive/10" : isWeekend ? "bg-muted/20" : "hover:bg-muted/30"}`}>
                     <td className="p-3">
-                      <span className="font-medium">{dayOfWeek} {dayNum}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-medium">{dayOfWeek} {dayNum}</span>
+                        {validation.hasError && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <AlertTriangle className="w-4 h-4 text-destructive" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{validation.message}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </div>
                     </td>
                     {isAbsent ? (
                       <td colSpan={4} className="text-center p-3">
@@ -246,14 +320,27 @@ const AttendanceHistory = () => {
                           const currentValue = editedValue !== undefined
                             ? (editedValue ? extractTime(editedValue as string) : "")
                             : extractTime(record?.[field] ?? null);
+                          const hasValue = currentValue !== "";
                           return (
                             <td key={field} className="text-center p-3">
-                              <Input
-                                type="time"
-                                className="w-28 mx-auto text-xs"
-                                value={currentValue}
-                                onChange={e => handleEdit(date, field, e.target.value)}
-                              />
+                              <div className="flex items-center justify-center gap-1">
+                                <Input
+                                  type="time"
+                                  className="w-28 text-xs"
+                                  value={currentValue}
+                                  onChange={e => handleEdit(date, field, e.target.value)}
+                                />
+                                {hasValue && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive"
+                                    onClick={() => handleClear(date, field)}
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </Button>
+                                )}
+                              </div>
                             </td>
                           );
                         })}
