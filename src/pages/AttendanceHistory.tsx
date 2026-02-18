@@ -177,11 +177,9 @@ const AttendanceHistory = () => {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <h1 className="font-heading text-3xl font-bold">Attendance History</h1>
-        {hasEdits && (
-          <Button onClick={saveAll} className="gap-2">
-            <Save className="w-4 h-4" /> Save Changes
-          </Button>
-        )}
+        <Button onClick={saveAll} className="gap-2" disabled={!hasEdits}>
+          <Save className="w-4 h-4" /> Save Changes
+        </Button>
       </div>
 
       {/* Controls */}
