@@ -57,25 +57,27 @@ const Dashboard = () => {
 
   useEffect(() => { fetchData(); }, [user]);
 
-  const quickCheckIn = async (childId: string) => {
+  const recordTime = async (childId: string, field: string) => {
     const now = new Date().toISOString();
     const existing = children.find(c => c.id === childId)?.attendance;
 
     if (existing) {
-      // Determine which field to fill
-      const update: Record<string, string> = {};
-      if (!existing.check_in_am) update.check_in_am = now;
-      else if (!existing.check_out_am) update.check_out_am = now;
-      else if (!existing.check_in_pm) update.check_in_pm = now;
-      else if (!existing.check_out_pm) update.check_out_pm = now;
-      else { toast.info("All times already recorded"); return; }
-
-      await supabase.from("attendance").update(update).eq("id", existing.id);
+      await supabase.from("attendance").update({ [field]: now }).eq("id", existing.id);
     } else {
-      await supabase.from("attendance").insert({ child_id: childId, date: today, check_in_am: now });
+      await supabase.from("attendance").insert({ child_id: childId, date: today, [field]: now });
     }
     toast.success("Time recorded!");
     fetchData();
+  };
+
+  type AttendanceStep = "check_in" | "out_choice" | "in_school" | "finished";
+
+  const getStep = (child: ChildWithAttendance): AttendanceStep => {
+    const a = child.attendance;
+    if (!a || !a.check_in_am) return "check_in";
+    if (!a.check_out_am && !a.check_out_pm) return "out_choice";
+    if (a.check_out_am && !a.check_in_pm) return "in_school";
+    return "finished";
   };
 
   const markAbsent = async (childId: string) => {
@@ -92,11 +94,12 @@ const Dashboard = () => {
   const getStatus = (child: ChildWithAttendance) => {
     if (!child.attendance) return "pending";
     if (child.attendance.marked_absent) return "absent";
+    if (getStep(child) === "finished") return "finished";
     if (child.attendance.check_in_am) return "present";
     return "pending";
   };
 
-  const presentCount = children.filter(c => getStatus(c) === "present").length;
+  const presentCount = children.filter(c => ["present", "finished"].includes(getStatus(c))).length;
   const absentCount = children.filter(c => getStatus(c) === "absent").length;
   const pendingCount = children.filter(c => getStatus(c) === "pending").length;
 
@@ -195,21 +198,40 @@ const Dashboard = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant={status === "present" ? "default" : status === "absent" ? "destructive" : "secondary"} className="text-xs">
+                    <Badge variant={status === "present" ? "default" : status === "absent" ? "destructive" : status === "finished" ? "outline" : "secondary"} className="text-xs">
                       {status === "present" && "Present"}
                       {status === "absent" && "Absent"}
                       {status === "pending" && "Pending"}
+                      {status === "finished" && "Finished"}
                     </Badge>
-                    {status !== "absent" && (
-                      <>
-                        <Button size="sm" variant="outline" onClick={() => quickCheckIn(child.id)}>
-                          <Clock className="w-3 h-3 mr-1" />
-                          {status === "pending" ? "Check In" : "Next"}
+                    {status !== "absent" && status !== "finished" && (() => {
+                      const step = getStep(child);
+                      if (step === "check_in") return (
+                        <Button size="sm" variant="outline" onClick={() => recordTime(child.id, "check_in_am")}>
+                          <Clock className="w-3 h-3 mr-1" /> Check In
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => markAbsent(child.id)} className="text-destructive">
-                          <XCircle className="w-3 h-3" />
+                      );
+                      if (step === "out_choice") return (
+                        <>
+                          <Button size="sm" variant="outline" onClick={() => recordTime(child.id, "check_out_am")}>
+                            Out (School)
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => recordTime(child.id, "check_out_pm")}>
+                            Out PM
+                          </Button>
+                        </>
+                      );
+                      if (step === "in_school") return (
+                        <Button size="sm" variant="outline" onClick={() => recordTime(child.id, "check_in_pm")}>
+                          In (School)
                         </Button>
-                      </>
+                      );
+                      return null;
+                    })()}
+                    {status !== "absent" && status !== "finished" && (
+                      <Button size="sm" variant="ghost" onClick={() => markAbsent(child.id)} className="text-destructive">
+                        <XCircle className="w-3 h-3" />
+                      </Button>
                     )}
                   </div>
                 </div>
