@@ -66,8 +66,8 @@ const SettingsPage = () => {
             <Input value={providerNumber} onChange={e => setProviderNumber(e.target.value)} placeholder="e.g. 12345" />
           </div>
           <div className="space-y-1">
-            <Label>Provider Name</Label>
-            <Input value={providerName} onChange={e => setProviderName(e.target.value)} placeholder="Your daycare name" />
+            <Label>Daycare Name</Label>
+            <Input value={providerName} onChange={e => setProviderName(e.target.value)} placeholder="e.g. Little Stars Daycare" />
           </div>
           <div className="space-y-1">
             <Label>Provider Alt ID</Label>
