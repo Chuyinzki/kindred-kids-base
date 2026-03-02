@@ -1,11 +1,27 @@
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Baby, LayoutDashboard, Users, ClipboardCheck, MonitorSmartphone, LogOut, Settings, History } from "lucide-react";
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const location = useLocation();
+  const [daycareName, setDaycareName] = useState("Little Stars");
+
+  useEffect(() => {
+    const fetchName = async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("provider_name")
+        .eq("user_id", user.id)
+        .single();
+      if (data?.provider_name) setDaycareName(data.provider_name);
+    };
+    fetchName();
+  }, [user]);
 
   const navItems = [
     { to: "/", icon: LayoutDashboard, label: "Dashboard" },
@@ -24,7 +40,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
             <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center">
               <Baby className="w-5 h-5 text-primary" />
             </div>
-            <span className="font-heading font-bold text-lg hidden sm:inline">Little Stars</span>
+            <span className="font-heading font-bold text-lg hidden sm:inline">{daycareName}</span>
           </Link>
 
           <nav className="flex items-center gap-1">
