@@ -70,13 +70,14 @@ const Dashboard = () => {
     fetchData();
   };
 
-  type AttendanceStep = "check_in" | "out_choice" | "in_school" | "finished";
+  type AttendanceStep = "check_in" | "out_choice" | "in_school" | "out_pm" | "finished";
 
   const getStep = (child: ChildWithAttendance): AttendanceStep => {
     const a = child.attendance;
     if (!a || !a.check_in_am) return "check_in";
     if (!a.check_out_am && !a.check_out_pm) return "out_choice";
     if (a.check_out_am && !a.check_in_pm) return "in_school";
+    if (a.check_in_pm && !a.check_out_pm) return "out_pm";
     return "finished";
   };
 
@@ -224,6 +225,11 @@ const Dashboard = () => {
                       if (step === "in_school") return (
                         <Button size="sm" variant="outline" onClick={() => recordTime(child.id, "check_in_pm")}>
                           In (School)
+                        </Button>
+                      );
+                      if (step === "out_pm") return (
+                        <Button size="sm" variant="outline" onClick={() => recordTime(child.id, "check_out_pm")}>
+                          Out PM
                         </Button>
                       );
                       return null;
