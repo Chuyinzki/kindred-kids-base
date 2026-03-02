@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { Baby, LogIn, LogOut, ArrowLeft, Clock, XCircle, MonitorSmartphone } from "lucide-react";
 
 type KioskStep = "select-child" | "enter-pin" | "action" | "done";
+type AttendanceStep = "check_in" | "out_choice" | "in_school" | "out_pm" | "finished";
 
 interface ChildInfo {
   id: string;
@@ -16,12 +17,22 @@ interface ChildInfo {
   parent_name: string;
 }
 
+interface AttendanceRecord {
+  id: string;
+  check_in_am: string | null;
+  check_out_am: string | null;
+  check_in_pm: string | null;
+  check_out_pm: string | null;
+  marked_absent: boolean;
+}
+
 const INACTIVITY_TIMEOUT = 12000; // 12 seconds
 
 const Kiosk = () => {
   const [step, setStep] = useState<KioskStep>("select-child");
   const [children, setChildren] = useState<ChildInfo[]>([]);
   const [selectedChild, setSelectedChild] = useState<ChildInfo | null>(null);
+  const [childAttendance, setChildAttendance] = useState<AttendanceRecord | null>(null);
   const [pin, setPin] = useState("");
   const [message, setMessage] = useState("");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -29,6 +40,7 @@ const Kiosk = () => {
   const resetKiosk = useCallback(() => {
     setStep("select-child");
     setSelectedChild(null);
+    setChildAttendance(null);
     setPin("");
     setMessage("");
   }, []);
@@ -68,71 +80,61 @@ const Kiosk = () => {
     fetchChildren();
   }, []);
 
-  const handleSelectChild = (child: ChildInfo) => {
+  const handleSelectChild = async (child: ChildInfo) => {
     setSelectedChild(child);
+    // Fetch today's attendance for this child
+    const today = format(new Date(), "yyyy-MM-dd");
+    const { data } = await supabase
+      .from("attendance")
+      .select("id, check_in_am, check_out_am, check_in_pm, check_out_pm, marked_absent")
+      .eq("child_id", child.id)
+      .eq("date", today)
+      .maybeSingle();
+    setChildAttendance(data || null);
     setStep("enter-pin");
   };
 
-  const handlePinSubmit = () => {
-    if (!selectedChild) return;
-    if (pin === selectedChild.family_pin) {
-      setStep("action");
-    } else {
-      toast.error("Incorrect PIN");
-      setPin("");
-    }
+  const getAttendanceStep = (): AttendanceStep => {
+    const a = childAttendance;
+    if (!a || !a.check_in_am) return "check_in";
+    if (!a.check_out_am && !a.check_out_pm) return "out_choice";
+    if (a.check_out_am && !a.check_in_pm) return "in_school";
+    if (a.check_in_pm && !a.check_out_pm) return "out_pm";
+    return "finished";
   };
 
-  const handleAction = async (action: "checkin" | "checkout" | "school-out" | "school-in" | "absent") => {
+  const recordTime = async (field: string) => {
     if (!selectedChild) return;
     const today = format(new Date(), "yyyy-MM-dd");
     const now = new Date().toISOString();
 
-    const { data: existing } = await supabase
-      .from("attendance")
-      .select("*")
-      .eq("child_id", selectedChild.id)
-      .eq("date", today)
-      .maybeSingle();
-
-    if (action === "absent") {
-      if (existing) {
-        await supabase.from("attendance").update({ marked_absent: true }).eq("id", existing.id);
-      } else {
-        await supabase.from("attendance").insert({ child_id: selectedChild.id, date: today, marked_absent: true });
-      }
-      setMessage(`${selectedChild.name} marked absent`);
-    } else if (action === "checkin") {
-      if (existing) {
-        if (!existing.check_in_am) {
-          await supabase.from("attendance").update({ check_in_am: now }).eq("id", existing.id);
-        }
-      } else {
-        await supabase.from("attendance").insert({ child_id: selectedChild.id, date: today, check_in_am: now });
-      }
-      setMessage(`${selectedChild.name} checked in at ${format(new Date(), "h:mm a")}`);
-    } else if (action === "school-out") {
-      if (existing) {
-        await supabase.from("attendance").update({ check_out_am: now }).eq("id", existing.id);
-      } else {
-        await supabase.from("attendance").insert({ child_id: selectedChild.id, date: today, check_out_am: now });
-      }
-      setMessage(`${selectedChild.name} checked out for school at ${format(new Date(), "h:mm a")}`);
-    } else if (action === "school-in") {
-      if (existing) {
-        await supabase.from("attendance").update({ check_in_pm: now }).eq("id", existing.id);
-      } else {
-        await supabase.from("attendance").insert({ child_id: selectedChild.id, date: today, check_in_pm: now });
-      }
-      setMessage(`${selectedChild.name} checked in from school at ${format(new Date(), "h:mm a")}`);
-    } else if (action === "checkout") {
-      if (existing) {
-        if (!existing.check_out_pm) {
-          await supabase.from("attendance").update({ check_out_pm: now }).eq("id", existing.id);
-        }
-      }
-      setMessage(`${selectedChild.name} checked out at ${format(new Date(), "h:mm a")}`);
+    if (childAttendance) {
+      await supabase.from("attendance").update({ [field]: now }).eq("id", childAttendance.id);
+    } else {
+      await supabase.from("attendance").insert({ child_id: selectedChild.id, date: today, [field]: now });
     }
+
+    const labels: Record<string, string> = {
+      check_in_am: "checked in",
+      check_out_am: "checked out for school",
+      check_in_pm: "checked in from school",
+      check_out_pm: "checked out",
+    };
+    setMessage(`${selectedChild.name} ${labels[field] || "recorded"} at ${format(new Date(), "h:mm a")}`);
+    setStep("done");
+    setTimeout(resetKiosk, 4000);
+  };
+
+  const markAbsent = async () => {
+    if (!selectedChild) return;
+    const today = format(new Date(), "yyyy-MM-dd");
+
+    if (childAttendance) {
+      await supabase.from("attendance").update({ marked_absent: true }).eq("id", childAttendance.id);
+    } else {
+      await supabase.from("attendance").insert({ child_id: selectedChild.id, date: today, marked_absent: true });
+    }
+    setMessage(`${selectedChild.name} marked absent`);
     setStep("done");
     setTimeout(resetKiosk, 4000);
   };
@@ -225,31 +227,56 @@ const Kiosk = () => {
           </Card>
         )}
 
-        {step === "action" && selectedChild && (
-          <div className="space-y-3 animate-scale-in">
-            <p className="text-center font-heading font-semibold text-lg mb-4">
-              Hi, {selectedChild.name}! 👋
-            </p>
-            <Button className="w-full h-16 text-lg gap-3 bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => handleAction("checkin")}>
-              <LogIn className="w-6 h-6" /> Check In
-            </Button>
-            <Button variant="outline" className="w-full h-14 text-lg gap-3" onClick={() => handleAction("school-out")}>
-              <LogOut className="w-6 h-6" /> Check Out for School
-            </Button>
-            <Button variant="outline" className="w-full h-14 text-lg gap-3" onClick={() => handleAction("school-in")}>
-              <LogIn className="w-6 h-6" /> Check In from School
-            </Button>
-            <Button variant="outline" className="w-full h-16 text-lg gap-3" onClick={() => handleAction("checkout")}>
-              <LogOut className="w-6 h-6" /> Check Out
-            </Button>
-            <Button variant="outline" className="w-full h-14 gap-3 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => handleAction("absent")}>
-              <XCircle className="w-5 h-5" /> Mark Absent
-            </Button>
-            <Button variant="ghost" className="w-full" onClick={resetKiosk}>
-              <ArrowLeft className="w-4 h-4 mr-2" /> Cancel
-            </Button>
-          </div>
-        )}
+        {step === "action" && selectedChild && (() => {
+          const aStep = getAttendanceStep();
+          const isAbsent = childAttendance?.marked_absent;
+          return (
+            <div className="space-y-3 animate-scale-in">
+              <p className="text-center font-heading font-semibold text-lg mb-4">
+                Hi, {selectedChild.name}! 👋
+              </p>
+              {isAbsent && (
+                <p className="text-center text-muted-foreground">Already marked absent today.</p>
+              )}
+              {aStep === "finished" && !isAbsent && (
+                <p className="text-center text-muted-foreground">All done for today! ✅</p>
+              )}
+              {aStep === "check_in" && !isAbsent && (
+                <>
+                  <Button className="w-full h-16 text-lg gap-3 bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => recordTime("check_in_am")}>
+                    <LogIn className="w-6 h-6" /> Check In
+                  </Button>
+                  <Button variant="outline" className="w-full h-14 gap-3 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={markAbsent}>
+                    <XCircle className="w-5 h-5" /> Mark Absent
+                  </Button>
+                </>
+              )}
+              {aStep === "out_choice" && (
+                <>
+                  <Button variant="outline" className="w-full h-14 text-lg gap-3" onClick={() => recordTime("check_out_am")}>
+                    <LogOut className="w-6 h-6" /> Out (School)
+                  </Button>
+                  <Button className="w-full h-16 text-lg gap-3 bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => recordTime("check_out_pm")}>
+                    <LogOut className="w-6 h-6" /> Out PM
+                  </Button>
+                </>
+              )}
+              {aStep === "in_school" && (
+                <Button className="w-full h-16 text-lg gap-3 bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => recordTime("check_in_pm")}>
+                  <LogIn className="w-6 h-6" /> In (School)
+                </Button>
+              )}
+              {aStep === "out_pm" && (
+                <Button className="w-full h-16 text-lg gap-3 bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => recordTime("check_out_pm")}>
+                  <LogOut className="w-6 h-6" /> Out PM
+                </Button>
+              )}
+              <Button variant="ghost" className="w-full" onClick={resetKiosk}>
+                <ArrowLeft className="w-4 h-4 mr-2" /> Cancel
+              </Button>
+            </div>
+          );
+        })()}
 
         {step === "done" && (
           <Card className="animate-scale-in">
