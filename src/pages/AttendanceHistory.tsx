@@ -105,35 +105,40 @@ const AttendanceHistory = () => {
   };
 
   const validateDay = (date: string): { hasError: boolean; message: string } => {
-    const fields = ["check_in_am", "check_out_am", "check_in_pm", "check_out_pm"] as const;
-    const values = fields.map(f => getEffectiveValue(date, f));
-    const times = values.map(v => (v ? new Date(v).getTime() : null));
+    const inAm = getEffectiveValue(date, "check_in_am");
+    const outSchool = getEffectiveValue(date, "check_out_am");
+    const inSchool = getEffectiveValue(date, "check_in_pm");
+    const outPm = getEffectiveValue(date, "check_out_pm");
 
-    const hasAny = times.some(t => t !== null);
+    const tInAm = inAm ? new Date(inAm).getTime() : null;
+    const tOutSchool = outSchool ? new Date(outSchool).getTime() : null;
+    const tInSchool = inSchool ? new Date(inSchool).getTime() : null;
+    const tOutPm = outPm ? new Date(outPm).getTime() : null;
+
+    const hasAny = tInAm !== null || tOutSchool !== null || tInSchool !== null || tOutPm !== null;
     if (!hasAny) return { hasError: false, message: "" };
 
-    // Check for gaps (later time set but earlier one missing)
-    for (let i = 1; i < times.length; i++) {
-      if (times[i] !== null) {
-        for (let j = 0; j < i; j++) {
-          if (times[j] === null) {
-            return { hasError: true, message: "Missing earlier time" };
-          }
-        }
-      }
+    // School fields must be both present or both empty
+    if ((tOutSchool !== null) !== (tInSchool !== null)) {
+      return { hasError: true, message: "Out (School) and In (School) must both be filled or both empty" };
     }
 
-    // Check chronological order
-    const filled = times.filter((t): t is number => t !== null);
-    for (let i = 1; i < filled.length; i++) {
-      if (filled[i] <= filled[i - 1]) {
+    // Must have In AM if anything else is set
+    if (tInAm === null && (tOutSchool !== null || tInSchool !== null || tOutPm !== null)) {
+      return { hasError: true, message: "Missing In AM" };
+    }
+
+    // Must have Out PM if In AM exists (incomplete record)
+    if (tInAm !== null && tOutPm === null) {
+      return { hasError: true, message: "Incomplete — no Out PM" };
+    }
+
+    // Chronological order: In AM < Out (School) < In (School) < Out PM
+    const sequence = [tInAm, tOutSchool, tInSchool, tOutPm].filter((t): t is number => t !== null);
+    for (let i = 1; i < sequence.length; i++) {
+      if (sequence[i] <= sequence[i - 1]) {
         return { hasError: true, message: "Times out of order" };
       }
-    }
-
-    // Incomplete: checked in but never checked out
-    if (times[0] !== null && times[1] === null && times[2] === null && times[3] === null) {
-      return { hasError: true, message: "Incomplete — no check-out" };
     }
 
     return { hasError: false, message: "" };
