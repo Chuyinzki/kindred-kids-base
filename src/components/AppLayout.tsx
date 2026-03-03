@@ -25,7 +25,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   }, [user]);
 
   const navItems = [
-    { to: "/", icon: LayoutDashboard, label: "Dashboard" },
+    { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/children", icon: Users, label: "Children" },
     { to: "/attendance", icon: ClipboardCheck, label: "Attendance" },
     { to: "/history", icon: History, label: "History" },
@@ -37,7 +37,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
       {/* Top Nav */}
       <header className="sticky top-0 z-50 bg-card border-b border-border shadow-sm">
         <div className="container flex items-center justify-between h-16 px-4">
-          <Link to="/" className="flex items-center gap-2">
+          <Link to="/dashboard" className="flex items-center gap-2">
             <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center">
               <Baby className="w-5 h-5 text-primary" />
             </div>
@@ -48,7 +48,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
             {navItems.map(item => (
               <Link key={item.to} to={item.to}>
                 <Button
-                  variant={location.pathname === item.to ? "default" : "ghost"}
+                  variant={location.pathname === item.to || (item.to === "/dashboard" && location.pathname === "/") ? "default" : "ghost"}
                   size="sm"
                   className="gap-2"
                 >

@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import AppLayout from "@/components/AppLayout";
 import Auth from "@/pages/Auth";
+import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
 import Children from "@/pages/Children";
 import Attendance from "@/pages/Attendance";
@@ -26,7 +27,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 const AuthRoute = () => {
   const { session, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading...</div>;
-  if (session) return <Navigate to="/" replace />;
+  if (session) return <Navigate to="/dashboard" replace />;
   return <Auth />;
 };
 
@@ -38,9 +39,10 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
+            <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<AuthRoute />} />
             <Route path="/kiosk" element={<Kiosk />} />
-            <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/children" element={<ProtectedRoute><Children /></ProtectedRoute>} />
             <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
             <Route path="/history" element={<ProtectedRoute><AttendanceHistory /></ProtectedRoute>} />
