@@ -13,6 +13,7 @@ const SettingsPage = () => {
   const [providerNumber, setProviderNumber] = useState("");
   const [providerName, setProviderName] = useState("");
   const [providerAltId, setProviderAltId] = useState("");
+  const [daycareName, setDaycareName] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,6 +28,7 @@ const SettingsPage = () => {
         setProviderNumber(data.provider_number || "");
         setProviderName(data.provider_name || "");
         setProviderAltId(data.provider_alt_id || "");
+        setDaycareName((data as any).daycare_name || "");
       }
       setLoading(false);
     };
@@ -41,7 +43,8 @@ const SettingsPage = () => {
         provider_number: providerNumber || null,
         provider_name: providerName || null,
         provider_alt_id: providerAltId || null,
-      })
+        daycare_name: daycareName || null,
+      } as any)
       .eq("user_id", user.id);
     if (error) toast.error(error.message);
     else toast.success("Settings saved");
@@ -62,12 +65,16 @@ const SettingsPage = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-1">
-            <Label>Provider #</Label>
-            <Input value={providerNumber} onChange={e => setProviderNumber(e.target.value)} placeholder="e.g. 12345" />
+            <Label>Daycare Name</Label>
+            <Input value={daycareName} onChange={e => setDaycareName(e.target.value)} placeholder="e.g. Little Stars Daycare" />
           </div>
           <div className="space-y-1">
-            <Label>Daycare Name</Label>
-            <Input value={providerName} onChange={e => setProviderName(e.target.value)} placeholder="e.g. Little Stars Daycare" />
+            <Label>Provider Name</Label>
+            <Input value={providerName} onChange={e => setProviderName(e.target.value)} placeholder="Your name" />
+          </div>
+          <div className="space-y-1">
+            <Label>Provider #</Label>
+            <Input value={providerNumber} onChange={e => setProviderNumber(e.target.value)} placeholder="e.g. 12345" />
           </div>
           <div className="space-y-1">
             <Label>Provider Alt ID</Label>
