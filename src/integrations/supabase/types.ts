@@ -153,6 +153,7 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          daycare_name: string | null
           id: string
           provider_alt_id: string | null
           provider_name: string | null
@@ -162,6 +163,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          daycare_name?: string | null
           id?: string
           provider_alt_id?: string | null
           provider_name?: string | null
@@ -171,6 +173,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          daycare_name?: string | null
           id?: string
           provider_alt_id?: string | null
           provider_name?: string | null

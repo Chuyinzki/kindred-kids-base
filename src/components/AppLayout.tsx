@@ -15,10 +15,11 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
       if (!user) return;
       const { data } = await supabase
         .from("profiles")
-        .select("provider_name")
+        .select("daycare_name, provider_name")
         .eq("user_id", user.id)
         .single();
-      if (data?.provider_name) setDaycareName(data.provider_name);
+      if ((data as any)?.daycare_name) setDaycareName((data as any).daycare_name);
+      else if (data?.provider_name) setDaycareName(data.provider_name);
     };
     fetchName();
   }, [user]);
