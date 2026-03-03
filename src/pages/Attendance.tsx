@@ -1,13 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
-import { ChevronLeft, ChevronRight, Clock, XCircle, CheckCircle2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, XCircle, CheckCircle2, Save, X } from "lucide-react";
 
 interface AttendanceRecord {
   id: string;
@@ -29,6 +28,13 @@ interface ChildRecord {
   parent_name: string;
 }
 
+type TimeFields = "check_in_am" | "check_out_am" | "check_in_pm" | "check_out_pm";
+const TIME_FIELDS: TimeFields[] = ["check_in_am", "check_out_am", "check_in_pm", "check_out_pm"];
+
+// Local draft: time strings keyed by "childId:field"
+type DraftMap = Record<string, string>; // value is HH:mm or "" for cleared
+type AbsentMap = Record<string, boolean>;
+
 const Attendance = () => {
   const { user } = useAuth();
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -36,7 +42,12 @@ const Attendance = () => {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = async () => {
+  // Local edits not yet saved
+  const [drafts, setDrafts] = useState<DraftMap>({});
+  const [absentDrafts, setAbsentDrafts] = useState<AbsentMap>({});
+  const [hasChanges, setHasChanges] = useState(false);
+
+  const fetchData = useCallback(async () => {
     if (!user) return;
     const { data: childData } = await supabase
       .from("children")
@@ -53,65 +64,126 @@ const Attendance = () => {
       .in("child_id", (childData || []).map(c => c.id));
 
     setAttendance(attData || []);
+    setDrafts({});
+    setAbsentDrafts({});
+    setHasChanges(false);
     setLoading(false);
-  };
+  }, [user, date]);
 
-  useEffect(() => { fetchData(); }, [user, date]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const getRecord = (childId: string) => attendance.find(a => a.child_id === childId);
 
-  const setTime = async (childId: string, field: string, value: string) => {
-    const record = getRecord(childId);
-    const timeValue = value ? new Date(`${date}T${value}`).toISOString() : null;
+  const draftKey = (childId: string, field: string) => `${childId}:${field}`;
 
-    if (record) {
-      await supabase.from("attendance").update({ [field]: timeValue }).eq("id", record.id);
-    } else {
-      await supabase.from("attendance").insert({ child_id: childId, date, [field]: timeValue });
-    }
-    fetchData();
+  const extractTime = (ts: string | null) => {
+    if (!ts) return "";
+    return format(parseISO(ts), "HH:mm");
   };
 
-  const toggleAbsent = async (childId: string) => {
+  // Get the displayed value: draft overrides DB
+  const getDisplayValue = (childId: string, field: TimeFields) => {
+    const key = draftKey(childId, field);
+    if (key in drafts) return drafts[key];
     const record = getRecord(childId);
-    if (record) {
-      await supabase.from("attendance").update({ marked_absent: !record.marked_absent }).eq("id", record.id);
-    } else {
-      await supabase.from("attendance").insert({ child_id: childId, date, marked_absent: true });
-    }
-    fetchData();
+    return extractTime(record?.[field] as string | null);
   };
 
-  const checkInAll = async () => {
-    const now = new Date().toISOString();
-    for (const child of children) {
-      const record = getRecord(child.id);
-      if (!record) {
-        await supabase.from("attendance").insert({ child_id: child.id, date, check_in_am: now });
-      } else if (!record.check_in_am && !record.marked_absent) {
-        await supabase.from("attendance").update({ check_in_am: now }).eq("id", record.id);
+  const getDisplayAbsent = (childId: string) => {
+    if (childId in absentDrafts) return absentDrafts[childId];
+    return getRecord(childId)?.marked_absent ?? false;
+  };
+
+  const updateDraft = (childId: string, field: TimeFields, value: string) => {
+    setDrafts(prev => ({ ...prev, [draftKey(childId, field)]: value }));
+    setHasChanges(true);
+  };
+
+  const clearTime = (childId: string, field: TimeFields) => {
+    setDrafts(prev => ({ ...prev, [draftKey(childId, field)]: "" }));
+    setHasChanges(true);
+  };
+
+  const toggleAbsent = (childId: string) => {
+    const current = getDisplayAbsent(childId);
+    setAbsentDrafts(prev => ({ ...prev, [childId]: !current }));
+    setHasChanges(true);
+  };
+
+  const discardChanges = () => {
+    setDrafts({});
+    setAbsentDrafts({});
+    setHasChanges(false);
+  };
+
+  const saveAll = async () => {
+    // Collect per-child changes
+    const childChanges: Record<string, Record<string, unknown>> = {};
+
+    // Time drafts
+    for (const [key, val] of Object.entries(drafts)) {
+      const [childId, field] = key.split(":");
+      if (!childChanges[childId]) childChanges[childId] = {};
+      childChanges[childId][field] = val ? new Date(`${date}T${val}`).toISOString() : null;
+    }
+
+    // Absent drafts
+    for (const [childId, absent] of Object.entries(absentDrafts)) {
+      if (!childChanges[childId]) childChanges[childId] = {};
+      childChanges[childId].marked_absent = absent;
+    }
+
+    let errors = 0;
+    for (const [childId, changes] of Object.entries(childChanges)) {
+      const record = getRecord(childId);
+      if (record) {
+        const { error } = await supabase.from("attendance").update(changes).eq("id", record.id);
+        if (error) errors++;
+      } else {
+        const { error } = await supabase.from("attendance").insert({ child_id: childId, date, ...changes });
+        if (error) errors++;
       }
     }
-    toast.success("All checked in");
+
+    if (errors) {
+      toast.error(`Failed to save ${errors} record(s)`);
+    } else {
+      toast.success("Attendance saved");
+    }
     fetchData();
   };
 
-  const checkOutAll = async () => {
-    const now = new Date().toISOString();
+  const checkInAll = () => {
+    const now = format(new Date(), "HH:mm");
     for (const child of children) {
-      const record = getRecord(child.id);
-      if (record && !record.marked_absent) {
-        if (record.check_in_am && !record.check_out_pm) {
-          if (!record.check_out_am) {
-            await supabase.from("attendance").update({ check_out_am: now }).eq("id", record.id);
-          } else {
-            await supabase.from("attendance").update({ check_out_pm: now }).eq("id", record.id);
-          }
-        }
+      const currentIn = getDisplayValue(child.id, "check_in_am");
+      const currentAbsent = getDisplayAbsent(child.id);
+      if (!currentIn && !currentAbsent) {
+        setDrafts(prev => ({ ...prev, [draftKey(child.id, "check_in_am")]: now }));
       }
     }
-    toast.success("All checked out");
-    fetchData();
+    setHasChanges(true);
+    toast.info("Check In All staged — click Save to apply");
+  };
+
+  const checkOutAll = () => {
+    const now = format(new Date(), "HH:mm");
+    for (const child of children) {
+      const currentAbsent = getDisplayAbsent(child.id);
+      if (currentAbsent) continue;
+      const inAm = getDisplayValue(child.id, "check_in_am");
+      if (!inAm) continue;
+      const outPm = getDisplayValue(child.id, "check_out_pm");
+      if (outPm) continue;
+      const outAm = getDisplayValue(child.id, "check_out_am");
+      if (!outAm) {
+        setDrafts(prev => ({ ...prev, [draftKey(child.id, "check_out_am")]: now }));
+      } else {
+        setDrafts(prev => ({ ...prev, [draftKey(child.id, "check_out_pm")]: now }));
+      }
+    }
+    setHasChanges(true);
+    toast.info("Check Out All staged — click Save to apply");
   };
 
   const changeDate = (dir: number) => {
@@ -120,25 +192,15 @@ const Attendance = () => {
     setDate(format(d, "yyyy-MM-dd"));
   };
 
-  const formatTime = (ts: string | null) => {
-    if (!ts) return "";
-    return format(parseISO(ts), "h:mm a");
-  };
-
-  const extractTime = (ts: string | null) => {
-    if (!ts) return "";
-    return format(parseISO(ts), "HH:mm");
-  };
-
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <h1 className="font-heading text-3xl font-bold">Attendance</h1>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => checkInAll()}>
+          <Button variant="outline" size="sm" onClick={checkInAll}>
             <CheckCircle2 className="w-4 h-4 mr-1" /> Check In All
           </Button>
-          <Button variant="outline" size="sm" onClick={() => checkOutAll()}>
+          <Button variant="outline" size="sm" onClick={checkOutAll}>
             <XCircle className="w-4 h-4 mr-1" /> Check Out All
           </Button>
         </div>
@@ -158,6 +220,19 @@ const Attendance = () => {
         </Button>
       </div>
 
+      {/* Save bar */}
+      {hasChanges && (
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
+          <span className="text-sm font-medium text-primary flex-1">You have unsaved changes</span>
+          <Button variant="ghost" size="sm" onClick={discardChanges}>
+            <X className="w-4 h-4 mr-1" /> Discard
+          </Button>
+          <Button size="sm" onClick={saveAll}>
+            <Save className="w-4 h-4 mr-1" /> Save All
+          </Button>
+        </div>
+      )}
+
       {/* Attendance table */}
       <Card>
         <CardContent className="p-0 overflow-x-auto">
@@ -174,8 +249,7 @@ const Attendance = () => {
             </thead>
             <tbody>
               {children.map(child => {
-                const record = getRecord(child.id);
-                const isAbsent = record?.marked_absent;
+                const isAbsent = getDisplayAbsent(child.id);
 
                 return (
                   <tr key={child.id} className="border-b border-border last:border-0 hover:bg-muted/30">
@@ -196,16 +270,31 @@ const Attendance = () => {
                       </td>
                     ) : (
                       <>
-                        {["check_in_am", "check_out_am", "check_in_pm", "check_out_pm"].map(field => (
-                          <td key={field} className="text-center p-3">
-                            <Input
-                              type="time"
-                              className="w-28 mx-auto text-xs"
-                              value={extractTime(record?.[field as keyof AttendanceRecord] as string | null)}
-                              onChange={e => setTime(child.id, field, e.target.value)}
-                            />
-                          </td>
-                        ))}
+                        {TIME_FIELDS.map(field => {
+                          const val = getDisplayValue(child.id, field);
+                          return (
+                            <td key={field} className="text-center p-3">
+                              <div className="flex items-center gap-1 justify-center">
+                                <Input
+                                  type="time"
+                                  className="w-28 text-xs"
+                                  value={val}
+                                  onChange={e => updateDraft(child.id, field, e.target.value)}
+                                />
+                                {val && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                    onClick={() => clearTime(child.id, field)}
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </Button>
+                                )}
+                              </div>
+                            </td>
+                          );
+                        })}
                       </>
                     )}
                     <td className="text-center p-3">
