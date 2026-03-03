@@ -31,7 +31,9 @@ const INACTIVITY_TIMEOUT = 12000; // 12 seconds
 
 const Kiosk = () => {
   const { session, signOut } = useAuth();
-  const [daycareName, setDaycareName] = useState(localStorage.getItem("daycare_name") || "Kindred Kids");
+  const [daycareName, setDaycareName] = useState(
+    sessionStorage.getItem("kiosk_daycare_name") || "Kindred Kids"
+  );
   const [step, setStep] = useState<KioskStep>("select-child");
   const [children, setChildren] = useState<ChildInfo[]>([]);
   const [selectedChild, setSelectedChild] = useState<ChildInfo | null>(null);
@@ -80,11 +82,19 @@ const Kiosk = () => {
   useEffect(() => {
     const onUpdated = (event: Event) => {
       const custom = event as CustomEvent<{ daycareName?: string }>;
-      const next = custom.detail?.daycareName || localStorage.getItem("daycare_name") || "Kindred Kids";
+      const next =
+        custom.detail?.daycareName ||
+        sessionStorage.getItem("kiosk_daycare_name") ||
+        "Kindred Kids";
       setDaycareName(next);
     };
     window.addEventListener("daycare-name-updated", onUpdated);
     return () => window.removeEventListener("daycare-name-updated", onUpdated);
+  }, []);
+
+  useEffect(() => {
+    const scopedName = sessionStorage.getItem("kiosk_daycare_name");
+    if (scopedName) setDaycareName(scopedName);
   }, []);
 
   useEffect(() => {

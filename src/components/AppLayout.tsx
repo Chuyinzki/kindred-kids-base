@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Baby, LayoutDashboard, Users, ClipboardCheck, MonitorSmartphone, LogOut, Settings, History } from "lucide-react";
+import { Baby, LayoutDashboard, Users, MonitorSmartphone, LogOut, Settings, History } from "lucide-react";
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const { user, signOut } = useAuth();
@@ -44,6 +44,20 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const enterKioskMode = async () => {
     if (user?.id) {
       sessionStorage.setItem("kiosk_provider_id", user.id);
+
+      // Capture provider-specific branding for kiosk before signing out.
+      let kioskName = daycareName;
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("daycare_name, provider_name")
+          .eq("user_id", user.id)
+          .single();
+        kioskName = data?.daycare_name || data?.provider_name || kioskName;
+      } catch {
+        // Keep existing in-memory name if profile fetch fails.
+      }
+      sessionStorage.setItem("kiosk_daycare_name", kioskName || "Kindred Kids");
     }
     await signOut();
     navigate("/kiosk");
@@ -52,7 +66,6 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const navItems = [
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/children", icon: Users, label: "Children" },
-    { to: "/attendance", icon: ClipboardCheck, label: "Attendance" },
     { to: "/history", icon: History, label: "History" },
     { to: "/settings", icon: Settings, label: "Settings" },
   ];
