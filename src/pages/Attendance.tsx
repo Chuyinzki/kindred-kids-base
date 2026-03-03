@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
-import { ChevronLeft, ChevronRight, XCircle, CheckCircle2, Save, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, XCircle, CheckCircle2, Save, X, AlertTriangle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { validateAttendanceTimes } from "@/lib/attendanceValidation";
 
 interface AttendanceRecord {
   id: string;
@@ -192,6 +194,19 @@ const Attendance = () => {
     setDate(format(d, "yyyy-MM-dd"));
   };
 
+  const getRowValidation = (childId: string) => {
+    const isAbsent = getDisplayAbsent(childId);
+    if (isAbsent) return { hasError: false, message: "" };
+
+    const toIso = (value: string) => (value ? new Date(`${date}T${value}`).toISOString() : null);
+    return validateAttendanceTimes({
+      check_in_am: toIso(getDisplayValue(childId, "check_in_am")),
+      check_out_am: toIso(getDisplayValue(childId, "check_out_am")),
+      check_in_pm: toIso(getDisplayValue(childId, "check_in_pm")),
+      check_out_pm: toIso(getDisplayValue(childId, "check_out_pm")),
+    });
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
@@ -250,16 +265,31 @@ const Attendance = () => {
             <tbody>
               {children.map(child => {
                 const isAbsent = getDisplayAbsent(child.id);
+                const validation = getRowValidation(child.id);
 
                 return (
-                  <tr key={child.id} className="border-b border-border last:border-0 hover:bg-muted/30">
+                  <tr key={child.id} className={`border-b border-border last:border-0 ${validation.hasError ? "bg-destructive/10" : "hover:bg-muted/30"}`}>
                     <td className="p-3">
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center font-heading font-bold text-primary text-xs">
                           {child.name.charAt(0)}
                         </div>
                         <div>
-                          <p className="font-medium">{child.name}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-medium">{child.name}</p>
+                            {validation.hasError && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <AlertTriangle className="w-4 h-4 text-destructive" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>{validation.message}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </div>
                           <p className="text-xs text-muted-foreground">{child.parent_name}</p>
                         </div>
                       </div>

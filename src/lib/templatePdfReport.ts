@@ -199,6 +199,14 @@ export const generateTemplatePdfBlob = async (input: {
   p1r.rotate(Math.PI / 2);
   p1r.drawImage(page1Landscape, 0, 0);
 
+  // Flip provider sheet 180deg from its current orientation.
+  const page1Final = makeCanvas(1243, 1608);
+  const p1f = page1Final.getContext("2d");
+  if (!p1f) throw new Error("Failed to initialize provider final canvas context");
+  p1f.translate(1243, 1608);
+  p1f.rotate(Math.PI);
+  p1f.drawImage(page1Portrait, 0, 0);
+
   // Page 2: attendance sheet
   const page2 = makeCanvas(1243, 1608);
   const p2 = page2.getContext("2d");
@@ -269,9 +277,10 @@ export const generateTemplatePdfBlob = async (input: {
     format: [1243, 1608],
     compress: true,
   });
-  pdf.addImage(page1Portrait.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, 1243, 1608);
-  pdf.addPage([1243, 1608], "portrait");
+  // Page order: attendance first, provider second.
   pdf.addImage(page2.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, 1243, 1608);
+  pdf.addPage([1243, 1608], "portrait");
+  pdf.addImage(page1Final.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, 1243, 1608);
 
   const blob = pdf.output("blob");
   const fileSafe = `${child.name}_${monthYear}_${child.child_id_number}`.replace(/\s+/g, "_");
