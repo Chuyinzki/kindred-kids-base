@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { format, parseISO, getDaysInMonth } from "date-fns";
-import { ChevronLeft, ChevronRight, Save, X, AlertTriangle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save, X, AlertTriangle, Printer } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { buildMonthlyReport, buildMonthlyReportPrintHtml } from "@/lib/monthlyReport";
 
 interface AttendanceRecord {
   id: string;
@@ -19,12 +20,24 @@ interface AttendanceRecord {
   check_in_pm: string | null;
   check_out_pm: string | null;
   marked_absent: boolean;
+  absence_reason: string | null;
   total_hours: number;
 }
 
 interface ChildRecord {
   id: string;
   name: string;
+  dob: string;
+  child_id_number: string;
+  family_number: string;
+  family_alt_id: string | null;
+  parent_name: string;
+}
+
+interface ProviderProfile {
+  provider_name: string | null;
+  provider_number: string | null;
+  daycare_name: string | null;
 }
 
 const MONTHS = [
@@ -41,6 +54,7 @@ const AttendanceHistory = () => {
   const [selectedChild, setSelectedChild] = useState<string>("");
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [edits, setEdits] = useState<Record<string, Partial<AttendanceRecord>>>({});
+  const [profile, setProfile] = useState<ProviderProfile | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -48,13 +62,20 @@ const AttendanceHistory = () => {
     const fetchChildren = async () => {
       const { data } = await supabase
         .from("children")
-        .select("id, name")
+        .select("id, name, dob, child_id_number, family_number, family_alt_id, parent_name")
         .eq("provider_id", user.id)
         .order("name");
       setChildren(data || []);
-      if (data && data.length > 0 && !selectedChild) {
-        setSelectedChild(data[0].id);
+      if (data && data.length > 0) {
+        setSelectedChild((prev) => prev || data[0].id);
       }
+
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("provider_name, provider_number, daycare_name")
+        .eq("user_id", user.id)
+        .single();
+      setProfile(profileData ?? null);
     };
     fetchChildren();
   }, [user]);
@@ -69,7 +90,7 @@ const AttendanceHistory = () => {
 
       const { data } = await supabase
         .from("attendance")
-        .select("id, child_id, date, check_in_am, check_out_am, check_in_pm, check_out_pm, marked_absent, total_hours")
+        .select("id, child_id, date, check_in_am, check_out_am, check_in_pm, check_out_pm, marked_absent, absence_reason, total_hours")
         .eq("child_id", selectedChild)
         .gte("date", startDate)
         .lte("date", endDate)
@@ -210,12 +231,83 @@ const AttendanceHistory = () => {
     const endDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
     const { data } = await supabase
       .from("attendance")
-      .select("id, child_id, date, check_in_am, check_out_am, check_in_pm, check_out_pm, marked_absent, total_hours")
+      .select("id, child_id, date, check_in_am, check_out_am, check_in_pm, check_out_pm, marked_absent, absence_reason, total_hours")
       .eq("child_id", selectedChild)
       .gte("date", startDate)
       .lte("date", endDate)
       .order("date");
     setRecords(data || []);
+  };
+
+  const printMonthlyReport = async () => {
+    const printWindow = window.open("", "_blank", "width=1100,height=800");
+    if (!printWindow) {
+      toast.error("Popup blocked. Allow popups to print.");
+      return;
+    }
+
+    printWindow.document.open();
+    printWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head><title>Preparing report...</title></head>
+        <body style="font-family: Arial, sans-serif; padding: 24px;">Preparing monthly report...</body>
+      </html>
+    `);
+    printWindow.document.close();
+
+    const child = children.find((c) => c.id === selectedChild);
+    if (!child) {
+      toast.error("Select a child first");
+      printWindow.close();
+      return;
+    }
+
+    if (!user) {
+      toast.error("You must be signed in");
+      printWindow.close();
+      return;
+    }
+
+    const report = buildMonthlyReport({
+      child,
+      provider: profile ?? {
+        provider_name: null,
+        provider_number: null,
+        daycare_name: null,
+      },
+      attendance: records.map((r) => ({
+        date: r.date,
+        check_in_am: r.check_in_am,
+        check_out_am: r.check_out_am,
+        check_in_pm: r.check_in_pm,
+        check_out_pm: r.check_out_pm,
+        marked_absent: r.marked_absent,
+        absence_reason: r.absence_reason,
+      })),
+      month: month + 1,
+      year,
+    });
+
+    const { error } = await supabase.from("monthly_sheets").upsert(
+      {
+        child_id: child.id,
+        month: month + 1,
+        year,
+        total_month_hours: report.total_month_hours,
+      },
+      { onConflict: "child_id,month,year" }
+    );
+
+    if (error) {
+      toast.error(error.message);
+    }
+
+    printWindow.document.open();
+    printWindow.document.write(buildMonthlyReportPrintHtml(report));
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 250);
   };
 
   const changeMonth = (dir: number) => {
@@ -241,9 +333,14 @@ const AttendanceHistory = () => {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <h1 className="font-heading text-3xl font-bold">Attendance History</h1>
-        <Button onClick={saveAll} className="gap-2" disabled={!hasEdits}>
-          <Save className="w-4 h-4" /> Save Changes
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={printMonthlyReport} className="gap-2" disabled={!selectedChild || loading}>
+            <Printer className="w-4 h-4" /> Print Monthly Report
+          </Button>
+          <Button onClick={saveAll} className="gap-2" disabled={!hasEdits}>
+            <Save className="w-4 h-4" /> Save Changes
+          </Button>
+        </div>
       </div>
 
       {/* Controls */}
