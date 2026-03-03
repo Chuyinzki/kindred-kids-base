@@ -9,6 +9,7 @@ export interface TemplateReportChild {
   name: string;
   dob: string;
   child_id_number: string;
+  specialist_tech_no: string | null;
   family_number: string;
   family_alt_id: string | null;
   parent_name: string;
@@ -214,7 +215,7 @@ export const generateTemplatePdfBlob = async (input: {
 
   drawText(p1, child.parent_name, 290, 134, 33);
   drawText(p1, child.family_number, 139, 134, 18);
-  drawText(p1, child.child_id_number, 1419, 134, 18);
+  drawText(p1, child.specialist_tech_no || "", 1419, 134, 18);
 
   drawText(p1, child.name, 282, 176, 33);
   drawText(p1, ageLabel, 866, 176, 33);
