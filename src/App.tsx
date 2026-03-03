@@ -13,6 +13,7 @@ import Attendance from "@/pages/Attendance";
 import AttendanceHistory from "@/pages/AttendanceHistory";
 import Kiosk from "@/pages/Kiosk";
 import SettingsPage from "@/pages/Settings";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,6 +42,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<AuthRoute />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/kiosk" element={<Kiosk />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/children" element={<ProtectedRoute><Children /></ProtectedRoute>} />

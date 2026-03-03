@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Baby, LayoutDashboard, Users, ClipboardCheck, MonitorSmartphone, LogOut
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const { user, signOut } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [daycareName, setDaycareName] = useState("Little Stars");
 
   useEffect(() => {
@@ -27,6 +28,11 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     document.title = daycareName ? `${daycareName} | Kindred Kids` : "Kindred Kids";
   }, [daycareName]);
+
+  const enterKioskMode = async () => {
+    await signOut();
+    navigate("/kiosk");
+  };
 
   const navItems = [
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -61,12 +67,15 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
                 </Button>
               </Link>
             ))}
-            <Link to="/kiosk">
-              <Button variant="outline" size="sm" className="gap-2 ml-2 border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground">
-                <MonitorSmartphone className="w-4 h-4" />
-                <span className="hidden md:inline">Kiosk</span>
-              </Button>
-            </Link>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 ml-2 border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
+              onClick={enterKioskMode}
+            >
+              <MonitorSmartphone className="w-4 h-4" />
+              <span className="hidden md:inline">Kiosk</span>
+            </Button>
             <Button variant="ghost" size="sm" onClick={signOut} className="ml-2">
               <LogOut className="w-4 h-4" />
             </Button>

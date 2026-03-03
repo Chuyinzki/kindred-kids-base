@@ -198,9 +198,12 @@ const Landing = () => {
               Kindred Kids
             </span>
           </div>
-          <p className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()} Kindred Kids. All rights reserved.
-          </p>
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <p>(c) {new Date().getFullYear()} Kindred Kids. All rights reserved.</p>
+            <Link to="/privacy" className="underline underline-offset-2 hover:text-foreground">
+              Privacy Policy
+            </Link>
+          </div>
         </div>
       </footer>
     </div>
@@ -208,3 +211,5 @@ const Landing = () => {
 };
 
 export default Landing;
+
+

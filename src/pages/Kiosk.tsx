@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,6 +30,7 @@ interface AttendanceRecord {
 const INACTIVITY_TIMEOUT = 12000; // 12 seconds
 
 const Kiosk = () => {
+  const { session, signOut } = useAuth();
   const [step, setStep] = useState<KioskStep>("select-child");
   const [children, setChildren] = useState<ChildInfo[]>([]);
   const [selectedChild, setSelectedChild] = useState<ChildInfo | null>(null);
@@ -68,6 +70,11 @@ const Kiosk = () => {
       window.removeEventListener("keydown", handler);
     };
   }, [restartTimer]);
+
+  useEffect(() => {
+    // Kiosk mode is intentionally anonymous. Any existing admin session is cleared.
+    if (session) void signOut();
+  }, [session, signOut]);
 
   useEffect(() => {
     const fetchChildren = async () => {
