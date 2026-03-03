@@ -28,7 +28,7 @@ const SettingsPage = () => {
         setProviderNumber(data.provider_number || "");
         setProviderName(data.provider_name || "");
         setProviderAltId(data.provider_alt_id || "");
-        setDaycareName((data as any).daycare_name || "");
+        setDaycareName(data.daycare_name || "");
       }
       setLoading(false);
     };
@@ -44,10 +44,16 @@ const SettingsPage = () => {
         provider_name: providerName || null,
         provider_alt_id: providerAltId || null,
         daycare_name: daycareName || null,
-      } as any)
+      })
       .eq("user_id", user.id);
-    if (error) toast.error(error.message);
-    else toast.success("Settings saved");
+    if (error) {
+      toast.error(error.message);
+    } else {
+      const updatedName = daycareName.trim() || providerName.trim() || "Kindred Kids";
+      localStorage.setItem("daycare_name", updatedName);
+      window.dispatchEvent(new CustomEvent("daycare-name-updated", { detail: { daycareName: updatedName } }));
+      toast.success("Settings saved");
+    }
   };
 
   if (loading) return <div className="text-center py-10 text-muted-foreground">Loading...</div>;

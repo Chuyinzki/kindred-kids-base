@@ -14,6 +14,7 @@ import AttendanceHistory from "@/pages/AttendanceHistory";
 import Kiosk from "@/pages/Kiosk";
 import SettingsPage from "@/pages/Settings";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
+import CoppaNotice from "@/pages/CoppaNotice";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,6 +44,7 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<AuthRoute />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/coppa-notice" element={<CoppaNotice />} />
             <Route path="/kiosk" element={<Kiosk />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/children" element={<ProtectedRoute><Children /></ProtectedRoute>} />

@@ -34,6 +34,12 @@ const emptyForm = {
   family_pin: "",
 };
 
+const parseLocalDate = (isoDate: string): Date => {
+  const [y, m, d] = isoDate.split("-").map((v) => Number(v));
+  if (!y || !m || !d) return new Date(isoDate);
+  return new Date(y, m - 1, d);
+};
+
 const Children = () => {
   const { user } = useAuth();
   const [children, setChildren] = useState<Child[]>([]);
@@ -63,6 +69,21 @@ const Children = () => {
     if (form.family_pin.length !== 4 || !/^\d{4}$/.test(form.family_pin)) {
       toast.error("Family PIN must be exactly 4 digits");
       return;
+    }
+
+    const samePinChildren = children.filter(
+      (c) => c.family_pin === form.family_pin && c.id !== editingId
+    );
+    if (samePinChildren.length > 0) {
+      const sharedFamilyNumbers = Array.from(new Set(samePinChildren.map((c) => c.family_number)));
+      const pinMatchesFamily = sharedFamilyNumbers.includes(form.family_number);
+      if (!pinMatchesFamily) {
+        const proceed = confirm(
+          `This PIN is already used by ${samePinChildren.length} child(ren) in family # ${sharedFamilyNumbers.join(", ")}.\n\n` +
+          `You entered family # ${form.family_number}. Continue anyway?`
+        );
+        if (!proceed) return;
+      }
     }
 
     const payload = {
@@ -111,8 +132,9 @@ const Children = () => {
   };
 
   const getAge = (dob: string) => {
-    const years = differenceInYears(new Date(), new Date(dob));
-    const months = differenceInMonths(new Date(), new Date(dob)) % 12;
+    const birthDate = parseLocalDate(dob);
+    const years = differenceInYears(new Date(), birthDate);
+    const months = differenceInMonths(new Date(), birthDate) % 12;
     if (years === 0) return `${months}mo`;
     return `${years}y ${months}mo`;
   };
@@ -157,6 +179,11 @@ const Children = () => {
                 <div className="space-y-1">
                   <Label>Family PIN (4 digits) *</Label>
                   <Input value={form.family_pin} onChange={e => setForm(f => ({...f, family_pin: e.target.value.replace(/\D/g, "").slice(0,4)}))} maxLength={4} required placeholder="0000" />
+                  {form.family_pin.length === 4 && children.some(c => c.family_pin === form.family_pin && c.id !== editingId) && (
+                    <p className="text-[11px] text-amber-600">
+                      PIN already exists for another child. Confirm family number before saving.
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -236,7 +263,7 @@ const Children = () => {
                 <div className="space-y-1 text-xs text-muted-foreground">
                   <p><span className="font-medium text-foreground">Parent:</span> {child.parent_name}</p>
                   <p><span className="font-medium text-foreground">ID:</span> {child.child_id_number} · <span className="font-medium text-foreground">Family:</span> {child.family_number}</p>
-                  <p><span className="font-medium text-foreground">DOB:</span> {format(new Date(child.dob), "MMM d, yyyy")}</p>
+                  <p><span className="font-medium text-foreground">DOB:</span> {format(parseLocalDate(child.dob), "MMM d, yyyy")}</p>
                 </div>
               </CardContent>
             </Card>

@@ -31,6 +31,7 @@ const INACTIVITY_TIMEOUT = 12000; // 12 seconds
 
 const Kiosk = () => {
   const { session, signOut } = useAuth();
+  const [daycareName, setDaycareName] = useState(localStorage.getItem("daycare_name") || "Kindred Kids");
   const [step, setStep] = useState<KioskStep>("select-child");
   const [children, setChildren] = useState<ChildInfo[]>([]);
   const [selectedChild, setSelectedChild] = useState<ChildInfo | null>(null);
@@ -75,6 +76,16 @@ const Kiosk = () => {
     // Kiosk mode is intentionally anonymous. Any existing admin session is cleared.
     if (session) void signOut();
   }, [session, signOut]);
+
+  useEffect(() => {
+    const onUpdated = (event: Event) => {
+      const custom = event as CustomEvent<{ daycareName?: string }>;
+      const next = custom.detail?.daycareName || localStorage.getItem("daycare_name") || "Kindred Kids";
+      setDaycareName(next);
+    };
+    window.addEventListener("daycare-name-updated", onUpdated);
+    return () => window.removeEventListener("daycare-name-updated", onUpdated);
+  }, []);
 
   useEffect(() => {
     const fetchChildren = async () => {
@@ -169,6 +180,7 @@ const Kiosk = () => {
           <div className="mx-auto w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-3">
             <MonitorSmartphone className="w-8 h-8 text-primary" />
           </div>
+          <p className="font-heading text-xl font-bold mb-1">{daycareName}</p>
           <h1 className="font-heading text-2xl font-bold">Kiosk Mode</h1>
           <p className="text-muted-foreground text-sm">Tap your child's name to check in or out</p>
         </div>

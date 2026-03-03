@@ -203,6 +203,9 @@ const Landing = () => {
             <Link to="/privacy" className="underline underline-offset-2 hover:text-foreground">
               Privacy Policy
             </Link>
+            <Link to="/coppa-notice" className="underline underline-offset-2 hover:text-foreground">
+              COPPA Notice
+            </Link>
           </div>
         </div>
       </footer>

@@ -9,7 +9,9 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const { user, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [daycareName, setDaycareName] = useState("Little Stars");
+  const [daycareName, setDaycareName] = useState(
+    () => localStorage.getItem("daycare_name") || "Little Stars"
+  );
 
   useEffect(() => {
     const fetchName = async () => {
@@ -24,6 +26,16 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     };
     fetchName();
   }, [user]);
+
+  useEffect(() => {
+    const onUpdated = (event: Event) => {
+      const custom = event as CustomEvent<{ daycareName?: string }>;
+      const nextName = custom.detail?.daycareName || localStorage.getItem("daycare_name") || "Little Stars";
+      setDaycareName(nextName);
+    };
+    window.addEventListener("daycare-name-updated", onUpdated);
+    return () => window.removeEventListener("daycare-name-updated", onUpdated);
+  }, []);
 
   useEffect(() => {
     document.title = daycareName ? `${daycareName} | Kindred Kids` : "Kindred Kids";
