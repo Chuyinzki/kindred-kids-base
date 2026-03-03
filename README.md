@@ -1,73 +1,84 @@
-# Welcome to your Lovable project
+# Kindred Kids
 
-## Project info
+Production-ready daycare attendance and reporting app, published as a portfolio/showcase project.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Live App
 
-## How can I edit this code?
+https://kindred-kids-base.vercel.app/
 
-There are several ways of editing your application.
+## What This App Does
 
-**Use Lovable**
+- Manages provider and child records
+- Tracks daily check-in/check-out attendance
+- Supports kiosk mode for parent PIN workflows
+- Generates monthly attendance PDFs from state-style templates
+- Supports single and bulk report downloads
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## Tech Stack
 
-Changes made via Lovable will be committed automatically to this repo.
+- React + TypeScript + Vite
+- Supabase (Auth, Postgres, RLS policies)
+- Tailwind + shadcn/ui
+- Vitest + Testing Library
 
-**Use your preferred IDE**
+## Security / Secrets
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- No runtime secrets are committed in this repo.
+- Environment values are loaded from `.env` (ignored by git).
+- Use `.env.example` as your template.
+- If this repo was private before and any secret was ever committed historically, rotate those credentials before going public.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Environment Variables
 
-Follow these steps:
+Create `.env` from `.env.example`:
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+```env
+VITE_SUPABASE_PROJECT_ID=your-supabase-project-id
+VITE_SUPABASE_PUBLISHABLE_KEY=your-supabase-anon-key
+VITE_SUPABASE_URL=https://your-supabase-project-id.supabase.co
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+## Local Development
 
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Database Setup (Your Own Supabase)
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+1. Create a new Supabase project.
+2. Link this repo:
 
-**Use GitHub Codespaces**
+```bash
+supabase login
+supabase link --project-ref <your-project-id>
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+3. Apply migrations:
 
-## What technologies are used for this project?
+```bash
+supabase db push
+```
 
-This project is built with:
+Migrations live in `supabase/migrations`.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Deploy (Vercel)
 
-## How can I deploy this project?
+1. Import repo into Vercel
+2. Set env vars:
+   - `VITE_SUPABASE_PROJECT_ID`
+   - `VITE_SUPABASE_PUBLISHABLE_KEY`
+   - `VITE_SUPABASE_URL`
+3. Build command: `npm run build`
+4. Output directory: `dist`
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## Testing
 
-## Can I connect a custom domain to my Lovable project?
+```bash
+npm test
+```
 
-Yes, you can!
+## Status
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+This repository is maintained as a public showcase of a real production-style app and ongoing improvements.

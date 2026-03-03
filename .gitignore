@@ -11,6 +11,13 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.*
+!.env.example
+
+# Supabase local CLI temp/cache artifacts
+supabase/.temp/
+!supabase/.temp/.gitkeep
 
 # Editor directories and files
 .vscode/*
