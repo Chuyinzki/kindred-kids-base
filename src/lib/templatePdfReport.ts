@@ -28,6 +28,7 @@ export interface TemplateReportAttendance {
   check_in_pm: string | null;
   check_out_pm: string | null;
   marked_absent: boolean;
+  absence_reason?: string | null;
 }
 
 interface DayHours {
@@ -256,6 +257,7 @@ export const generateTemplatePdfBlob = async (input: {
   const schoolTimeOutX = 304;
   const schoolTimeInX = 399;
   const timeOutX = 488;
+  const reasonX = 585;
   const amTotalX = 897;
   const pmTotalX = 991;
   const totalX = 1079;
@@ -284,6 +286,10 @@ export const generateTemplatePdfBlob = async (input: {
     drawText(p2, formatDate(date), dayX, lineY, 18);
     if (record?.marked_absent) {
       drawText(p2, "Absent", timeInX, lineY, 18);
+      const reasonText = (record.absence_reason || "").trim();
+      if (reasonText) {
+        drawText(p2, reasonText.slice(0, 40), reasonX, lineY, 18);
+      }
       continue;
     }
     drawText(p2, formatTime(record?.check_in_am ?? null), timeInX, lineY, 18);

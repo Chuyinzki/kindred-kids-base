@@ -188,13 +188,31 @@ const AttendanceHistory = () => {
     const record = getRecord(date);
     const key = record?.id || `new-${date}`;
     const currentAbsent = edits[key]?.marked_absent ?? record?.marked_absent ?? false;
+    const nextAbsent = !currentAbsent;
     setEdits(prev => ({
       ...prev,
       [key]: {
         ...prev[key],
         date,
         child_id: selectedChild,
-        marked_absent: !currentAbsent,
+        marked_absent: nextAbsent,
+        absence_reason: nextAbsent
+          ? (prev[key]?.absence_reason ?? record?.absence_reason ?? "")
+          : null,
+      },
+    }));
+  };
+
+  const handleAbsenceReasonEdit = (date: string, value: string) => {
+    const record = getRecord(date);
+    const key = record?.id || `new-${date}`;
+    setEdits((prev) => ({
+      ...prev,
+      [key]: {
+        ...prev[key],
+        date,
+        child_id: selectedChild,
+        absence_reason: value.trim() ? value : null,
       },
     }));
   };
@@ -210,6 +228,7 @@ const AttendanceHistory = () => {
           check_in_pm: edit.check_in_pm || null,
           check_out_pm: edit.check_out_pm || null,
           marked_absent: edit.marked_absent || false,
+          absence_reason: edit.marked_absent ? (edit.absence_reason || null) : null,
         });
       } else {
         await supabase.from("attendance").update(edit).eq("id", key);
@@ -246,6 +265,7 @@ const AttendanceHistory = () => {
         check_in_pm: r.check_in_pm,
         check_out_pm: r.check_out_pm,
         marked_absent: r.marked_absent,
+        absence_reason: r.absence_reason,
       })),
       month: month + 1,
       year,
@@ -481,6 +501,7 @@ const AttendanceHistory = () => {
                 <th className="text-center p-3 font-heading font-semibold">Out (School)</th>
                 <th className="text-center p-3 font-heading font-semibold">In (School)</th>
                 <th className="text-center p-3 font-heading font-semibold">Out PM</th>
+                <th className="text-left p-3 font-heading font-semibold">Reason for Absence</th>
                 <th className="text-center p-3 font-heading font-semibold">Status</th>
               </tr>
             </thead>
@@ -489,6 +510,7 @@ const AttendanceHistory = () => {
                 const record = getRecord(date);
                 const editForRecord = record ? edits[record.id] : edits[`new-${date}`];
                 const isAbsent = editForRecord?.marked_absent ?? record?.marked_absent ?? false;
+                const absenceReason = (editForRecord?.absence_reason ?? record?.absence_reason ?? "") as string;
                 const { dayOfWeek, dayNum } = getDayLabel(date);
                 const isWeekend = dayOfWeek === "Sat" || dayOfWeek === "Sun";
                 const validation = validateDay(date);
@@ -549,6 +571,16 @@ const AttendanceHistory = () => {
                         })}
                       </>
                     )}
+                    <td className="p-3">
+                      <Input
+                        value={absenceReason}
+                        onChange={(e) => handleAbsenceReasonEdit(date, e.target.value)}
+                        placeholder={isAbsent ? "e.g. Sick, Vacation" : "Only used if absent"}
+                        className="h-8 text-xs"
+                        maxLength={120}
+                        disabled={!isAbsent}
+                      />
+                    </td>
                     <td className="text-center p-3">
                       <Button
                         size="sm"
