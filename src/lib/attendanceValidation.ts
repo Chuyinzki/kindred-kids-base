@@ -16,6 +16,14 @@ const toMillis = (value: string | null): number | null => {
   return Number.isFinite(t) ? t : null;
 };
 
+export const hasMeaningfulAttendanceEntry = (
+  input: AttendanceValidationInput,
+  markedAbsent = false
+): boolean => {
+  if (markedAbsent) return true;
+  return Boolean(input.check_in_am || input.check_out_am || input.check_in_pm || input.check_out_pm);
+};
+
 export const validateAttendanceTimes = (
   input: AttendanceValidationInput
 ): AttendanceValidationResult => {

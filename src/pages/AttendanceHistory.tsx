@@ -11,7 +11,7 @@ import { format, parseISO, getDaysInMonth } from "date-fns";
 import { ChevronLeft, ChevronRight, Save, X, AlertTriangle, Printer, Eye, Download } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { generateTemplatePdfBlob } from "@/lib/templatePdfReport";
-import { validateAttendanceTimes } from "@/lib/attendanceValidation";
+import { hasMeaningfulAttendanceEntry, validateAttendanceTimes } from "@/lib/attendanceValidation";
 import JSZip from "jszip";
 
 interface AttendanceRecord {
@@ -286,12 +286,24 @@ const AttendanceHistory = () => {
       return null;
     }
 
-    if (records.length === 0) {
+    const meaningfulRecords = records.filter((r) =>
+      hasMeaningfulAttendanceEntry(
+        {
+          check_in_am: r.check_in_am,
+          check_out_am: r.check_out_am,
+          check_in_pm: r.check_in_pm,
+          check_out_pm: r.check_out_pm,
+        },
+        r.marked_absent
+      )
+    );
+
+    if (meaningfulRecords.length === 0) {
       toast.error("No entries for selected month");
       return null;
     }
 
-    return generateReportForChild(child, records);
+    return generateReportForChild(child, meaningfulRecords);
   };
 
   const downloadMonthlyReport = async () => {
@@ -347,11 +359,23 @@ const AttendanceHistory = () => {
 
     return children.map((child) => {
       const childRecords = grouped.get(child.id) || [];
-      if (childRecords.length === 0) {
+      const meaningfulRecords = childRecords.filter((r) =>
+        hasMeaningfulAttendanceEntry(
+          {
+            check_in_am: r.check_in_am,
+            check_out_am: r.check_out_am,
+            check_in_pm: r.check_in_pm,
+            check_out_pm: r.check_out_pm,
+          },
+          r.marked_absent
+        )
+      );
+
+      if (meaningfulRecords.length === 0) {
         return { child, records: [], reason: "No entries for selected month" };
       }
 
-      const invalidEntry = childRecords.some((r) =>
+      const invalidEntry = meaningfulRecords.some((r) =>
         validateAttendanceTimes({
           check_in_am: r.marked_absent ? null : r.check_in_am,
           check_out_am: r.marked_absent ? null : r.check_out_am,
@@ -361,10 +385,10 @@ const AttendanceHistory = () => {
       );
 
       if (invalidEntry) {
-        return { child, records: childRecords, reason: "Invalid entries in selected month" };
+        return { child, records: meaningfulRecords, reason: "Invalid entries in selected month" };
       }
 
-      return { child, records: childRecords, reason: null };
+      return { child, records: meaningfulRecords, reason: null };
     });
   };
 

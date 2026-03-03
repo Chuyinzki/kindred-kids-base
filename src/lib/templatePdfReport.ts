@@ -2,6 +2,7 @@ import { format } from "date-fns";
 import { jsPDF } from "jspdf";
 import providerSheetUrl from "@/templates/daycare_provider_sheet.jpg";
 import attendanceSheetUrl from "@/templates/daycare_attendance_sheet.jpg";
+import { hasMeaningfulAttendanceEntry } from "./attendanceValidation";
 
 export interface TemplateReportChild {
   id: string;
@@ -72,6 +73,15 @@ const formatTime = (value: string | null): string => {
 const formatDate = (value: string): string => {
   const d = new Date(`${value}T00:00:00`);
   return Number.isNaN(d.getTime()) ? value : format(d, "MM/dd/yyyy");
+};
+
+const monthDates = (year: number, month: number): string[] => {
+  const days = new Date(year, month, 0).getDate();
+  const list: string[] = [];
+  for (let d = 1; d <= days; d++) {
+    list.push(`${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`);
+  }
+  return list;
 };
 
 const computeAmPmHours = (record: TemplateReportAttendance): DayHours => {
@@ -147,6 +157,8 @@ export const generateTemplatePdfBlob = async (input: {
 
   const weekly: Record<number, { am: number; pm: number }> = {};
   for (let i = 1; i <= 6; i++) weekly[i] = { am: 0, pm: 0 };
+
+  const recordsByDate = new Map(input.attendance.map((r) => [r.date, r]));
 
   for (const record of input.attendance) {
     const week = getWeekOfMonth(record.date);
@@ -248,23 +260,38 @@ export const generateTemplatePdfBlob = async (input: {
   const pmTotalX = 991;
   const totalX = 1079;
 
-  for (const record of input.attendance) {
-    const week = getWeekOfMonth(record.date);
+  for (const date of monthDates(input.year, input.month)) {
+    const record = recordsByDate.get(date);
+    const week = getWeekOfMonth(date);
     if (week < 1 || week > 6) continue;
-    const d = new Date(`${record.date}T00:00:00`);
+    const d = new Date(`${date}T00:00:00`);
     const dayOfWeek = d.getDay(); // 0=Sun
     const lineY = topBlockY + weeklyYDiff * (week - 1) + lineDiff * dayOfWeek;
-    const dayHours = computeAmPmHours(record);
+    const dayHours = record
+      ? computeAmPmHours(record)
+      : { am: 0, pm: 0 };
+    const hasEntry = !!record && hasMeaningfulAttendanceEntry(
+      {
+        check_in_am: record.check_in_am,
+        check_out_am: record.check_out_am,
+        check_in_pm: record.check_in_pm,
+        check_out_pm: record.check_out_pm,
+      },
+      record.marked_absent
+    );
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
-    drawText(p2, formatDate(record.date), dayX, lineY, 18);
-    drawText(p2, formatTime(record.check_in_am), timeInX, lineY, 18);
-    drawText(p2, formatTime(record.check_out_am), schoolTimeOutX, lineY, 18);
-    drawText(p2, formatTime(record.check_in_pm), schoolTimeInX, lineY, 18);
-    drawText(p2, formatTime(record.check_out_pm), timeOutX, lineY, 18);
-    if (!isWeekend) drawText(p2, fixed(dayHours.am), amTotalX, lineY, 18);
-    drawText(p2, fixed(dayHours.pm), pmTotalX, lineY, 18);
-    drawText(p2, fixed(dayHours.am + dayHours.pm), totalX, lineY, 18);
+    drawText(p2, formatDate(date), dayX, lineY, 18);
+    drawText(p2, formatTime(record?.check_in_am ?? null), timeInX, lineY, 18);
+    drawText(p2, formatTime(record?.check_out_am ?? null), schoolTimeOutX, lineY, 18);
+    drawText(p2, formatTime(record?.check_in_pm ?? null), schoolTimeInX, lineY, 18);
+    drawText(p2, formatTime(record?.check_out_pm ?? null), timeOutX, lineY, 18);
+
+    if (hasEntry) {
+      if (!isWeekend) drawText(p2, fixed(dayHours.am), amTotalX, lineY, 18);
+      drawText(p2, fixed(dayHours.pm), pmTotalX, lineY, 18);
+      drawText(p2, fixed(dayHours.am + dayHours.pm), totalX, lineY, 18);
+    }
   }
 
   for (let i = 1; i <= 6; i++) {

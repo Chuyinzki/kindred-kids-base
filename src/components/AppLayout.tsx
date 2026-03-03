@@ -18,11 +18,15 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
         .select("daycare_name, provider_name")
         .eq("user_id", user.id)
         .single();
-      if ((data as any)?.daycare_name) setDaycareName((data as any).daycare_name);
+      if (data?.daycare_name) setDaycareName(data.daycare_name);
       else if (data?.provider_name) setDaycareName(data.provider_name);
     };
     fetchName();
   }, [user]);
+
+  useEffect(() => {
+    document.title = daycareName ? `${daycareName} | Kindred Kids` : "Kindred Kids";
+  }, [daycareName]);
 
   const navItems = [
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
