@@ -49,6 +49,14 @@ const hoursBetween = (start: number | null, end: number | null): number => {
   return round1((end - start) / 3_600_000);
 };
 
+const overlapHours = (start: number, end: number, winStart: number, winEnd: number): number => {
+  if (end <= start) return 0;
+  const overlapStart = Math.max(start, winStart);
+  const overlapEnd = Math.min(end, winEnd);
+  if (overlapEnd <= overlapStart) return 0;
+  return (overlapEnd - overlapStart) / 3_600_000;
+};
+
 const parseLocalDate = (isoDate: string): Date => {
   const [y, m, d] = isoDate.split("-").map((v) => Number(v));
   if (!y || !m || !d) return new Date(isoDate);
@@ -96,18 +104,35 @@ const computeAmPmHours = (record: TemplateReportAttendance): DayHours => {
 
   const day = new Date(`${record.date}T00:00:00`).getDay();
   const isWeekend = day === 0 || day === 6;
-  if (isWeekend) {
-    return { am: 0, pm: hoursBetween(inAm, outPm) };
-  }
+  const daycareIntervals: Array<{ start: number; end: number }> = [];
 
   if (outSchool !== null && inSchool !== null && outSchool > inAm && inSchool > outSchool && outPm > inSchool) {
-    return {
-      am: hoursBetween(inAm, outSchool),
-      pm: hoursBetween(inSchool, outPm),
-    };
+    daycareIntervals.push({ start: inAm, end: outSchool });
+    daycareIntervals.push({ start: inSchool, end: outPm });
+  } else {
+    daycareIntervals.push({ start: inAm, end: outPm });
   }
 
-  return { am: hoursBetween(inAm, outPm), pm: 0 };
+  if (isWeekend) {
+    const pm = round1(
+      daycareIntervals.reduce((sum, interval) => sum + hoursBetween(interval.start, interval.end), 0)
+    );
+    return { am: 0, pm };
+  }
+
+  const amWindowStart = new Date(`${record.date}T06:00:00`).getTime();
+  const amWindowEnd = new Date(`${record.date}T18:00:00`).getTime();
+
+  let am = 0;
+  let pm = 0;
+  for (const interval of daycareIntervals) {
+    const total = hoursBetween(interval.start, interval.end);
+    const amSlice = overlapHours(interval.start, interval.end, amWindowStart, amWindowEnd);
+    am += amSlice;
+    pm += total - amSlice;
+  }
+
+  return { am: round1(am), pm: round1(pm) };
 };
 
 const getWeekOfMonth = (dateIso: string): number => {

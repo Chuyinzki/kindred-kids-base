@@ -167,6 +167,47 @@ const Landing = () => {
         </div>
       </section>
 
+      {/* ICOE Examples */}
+      <section className="container px-4 pb-20">
+        <div className="rounded-2xl border border-border bg-card p-6 md:p-8">
+          <div className="mb-6 text-center">
+            <p className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+              ICOE Format
+            </p>
+            <h2 className="mt-3 font-heading text-2xl md:text-3xl font-bold">
+              Real monthly report outcomes, ready for submission
+            </h2>
+            <p className="mt-2 text-muted-foreground">
+              Generate clean, consistent attendance exports in the ICOE format.
+            </p>
+          </div>
+          <div className="grid gap-4">
+            <figure className="overflow-hidden rounded-xl border border-border bg-background">
+              <img
+                src="/examples/Attendance_example.jpg"
+                alt="ICOE attendance sheet example"
+                className="w-full object-cover"
+                loading="lazy"
+              />
+              <figcaption className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
+                Attendance Sheet Example
+              </figcaption>
+            </figure>
+            <figure className="overflow-hidden rounded-xl border border-border bg-background">
+              <img
+                src="/examples/Provider_example.jpg"
+                alt="ICOE provider sheet example"
+                className="w-full object-cover"
+                loading="lazy"
+              />
+              <figcaption className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
+                Provider Sheet Example
+              </figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="container px-4 pb-20">
         <div className="relative rounded-2xl bg-gradient-to-br from-primary to-primary/80 p-10 md:p-16 text-center overflow-hidden">
