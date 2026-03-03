@@ -282,6 +282,10 @@ export const generateTemplatePdfBlob = async (input: {
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
     drawText(p2, formatDate(date), dayX, lineY, 18);
+    if (record?.marked_absent) {
+      drawText(p2, "Absent", timeInX, lineY, 18);
+      continue;
+    }
     drawText(p2, formatTime(record?.check_in_am ?? null), timeInX, lineY, 18);
     drawText(p2, formatTime(record?.check_out_am ?? null), schoolTimeOutX, lineY, 18);
     drawText(p2, formatTime(record?.check_in_pm ?? null), schoolTimeInX, lineY, 18);

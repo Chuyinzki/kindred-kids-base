@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, CheckCircle2, XCircle, Clock, AlertTriangle } from "lucide-react";
+import { Users, CheckCircle2, XCircle, Clock, AlertTriangle, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
@@ -25,20 +25,37 @@ interface ChildWithAttendance {
   };
 }
 
+interface ProviderProfile {
+  daycare_name: string | null;
+  provider_name: string | null;
+  provider_number: string | null;
+}
+
 const Dashboard = () => {
   const { user } = useAuth();
   const [children, setChildren] = useState<ChildWithAttendance[]>([]);
+  const [providerProfile, setProviderProfile] = useState<ProviderProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const today = format(new Date(), "yyyy-MM-dd");
 
   const fetchData = async () => {
     if (!user) return;
-    const { data: childrenData, error: childErr } = await supabase
-      .from("children")
-      .select("id, name, child_id_number, parent_name")
-      .eq("provider_id", user.id);
+    const [childrenRes, profileRes] = await Promise.all([
+      supabase
+        .from("children")
+        .select("id, name, child_id_number, parent_name")
+        .eq("provider_id", user.id),
+      supabase
+        .from("profiles")
+        .select("daycare_name, provider_name, provider_number")
+        .eq("user_id", user.id)
+        .maybeSingle(),
+    ]);
+
+    const { data: childrenData, error: childErr } = childrenRes;
 
     if (childErr) { toast.error(childErr.message); return; }
+    setProviderProfile(profileRes.data || null);
 
     const { data: attendanceData } = await supabase
       .from("attendance")
@@ -103,6 +120,7 @@ const Dashboard = () => {
   const presentCount = children.filter(c => ["present", "finished"].includes(getStatus(c))).length;
   const absentCount = children.filter(c => getStatus(c) === "absent").length;
   const pendingCount = children.filter(c => getStatus(c) === "pending").length;
+  const missingProviderInfo = !providerProfile?.daycare_name || !providerProfile?.provider_name || !providerProfile?.provider_number;
 
   if (loading) {
     return (
@@ -118,6 +136,25 @@ const Dashboard = () => {
         <h1 className="font-heading text-3xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground">{format(new Date(), "EEEE, MMMM d, yyyy")}</p>
       </div>
+
+      {missingProviderInfo && (
+        <Card className="border-warning/40 bg-warning/5">
+          <CardContent className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-5 h-5 text-warning mt-0.5" />
+              <div>
+                <p className="font-semibold text-sm">Complete provider info before monthly reports</p>
+                <p className="text-sm text-muted-foreground">
+                  Add daycare name, provider name, and provider number in Account Settings.
+                </p>
+              </div>
+            </div>
+            <Link to="/settings">
+              <Button size="sm" variant="outline" className="border-warning/40">Open Settings</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

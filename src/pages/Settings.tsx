@@ -5,16 +5,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Save } from "lucide-react";
+import { useTheme } from "next-themes";
 
 const SettingsPage = () => {
   const { user } = useAuth();
+  const { resolvedTheme, setTheme } = useTheme();
   const [providerNumber, setProviderNumber] = useState("");
   const [providerName, setProviderName] = useState("");
   const [providerAltId, setProviderAltId] = useState("");
   const [daycareName, setDaycareName] = useState("");
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const fetch = async () => {
@@ -94,10 +102,22 @@ const SettingsPage = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="font-heading text-lg">Account</CardTitle>
+          <CardTitle className="font-heading text-lg">Account Settings</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">{user?.email}</p>
+          <div className="flex items-center justify-between rounded-lg border border-border p-3">
+            <div>
+              <p className="font-medium text-sm">Dark theme</p>
+              <p className="text-xs text-muted-foreground">Use a darker color palette in the app.</p>
+            </div>
+            <Switch
+              checked={mounted && resolvedTheme === "dark"}
+              onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+              disabled={!mounted}
+              aria-label="Toggle dark theme"
+            />
+          </div>
         </CardContent>
       </Card>
     </div>

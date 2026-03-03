@@ -269,7 +269,7 @@ const Kiosk = () => {
           return (
             <div className="space-y-3 animate-scale-in">
               <p className="text-center font-heading font-semibold text-lg mb-4">
-                Hi, {selectedChild.name}! 👋
+                Hi, parent of {selectedChild.name}!
               </p>
               {isAbsent && (
                 <p className="text-center text-muted-foreground">Already marked absent today.</p>
