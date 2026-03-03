@@ -11,7 +11,8 @@ import { format, parseISO, getDaysInMonth } from "date-fns";
 import { ChevronLeft, ChevronRight, Save, X, AlertTriangle, Printer, Eye, Download } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { generateTemplatePdfBlob } from "@/lib/templatePdfReport";
-import { hasMeaningfulAttendanceEntry, validateAttendanceTimes } from "@/lib/attendanceValidation";
+import { validateAttendanceTimes } from "@/lib/attendanceValidation";
+import { buildChildMonthlyEligibility, filterMeaningfulRecords } from "@/lib/reportEligibility";
 import JSZip from "jszip";
 
 interface AttendanceRecord {
@@ -286,17 +287,7 @@ const AttendanceHistory = () => {
       return null;
     }
 
-    const meaningfulRecords = records.filter((r) =>
-      hasMeaningfulAttendanceEntry(
-        {
-          check_in_am: r.check_in_am,
-          check_out_am: r.check_out_am,
-          check_in_pm: r.check_in_pm,
-          check_out_pm: r.check_out_pm,
-        },
-        r.marked_absent
-      )
-    );
+    const meaningfulRecords = filterMeaningfulRecords(records);
 
     if (meaningfulRecords.length === 0) {
       toast.error("No entries for selected month");
@@ -357,39 +348,7 @@ const AttendanceHistory = () => {
       grouped.set(r.child_id, list);
     });
 
-    return children.map((child) => {
-      const childRecords = grouped.get(child.id) || [];
-      const meaningfulRecords = childRecords.filter((r) =>
-        hasMeaningfulAttendanceEntry(
-          {
-            check_in_am: r.check_in_am,
-            check_out_am: r.check_out_am,
-            check_in_pm: r.check_in_pm,
-            check_out_pm: r.check_out_pm,
-          },
-          r.marked_absent
-        )
-      );
-
-      if (meaningfulRecords.length === 0) {
-        return { child, records: [], reason: "No entries for selected month" };
-      }
-
-      const invalidEntry = meaningfulRecords.some((r) =>
-        validateAttendanceTimes({
-          check_in_am: r.marked_absent ? null : r.check_in_am,
-          check_out_am: r.marked_absent ? null : r.check_out_am,
-          check_in_pm: r.marked_absent ? null : r.check_in_pm,
-          check_out_pm: r.marked_absent ? null : r.check_out_pm,
-        }).hasError
-      );
-
-      if (invalidEntry) {
-        return { child, records: meaningfulRecords, reason: "Invalid entries in selected month" };
-      }
-
-      return { child, records: meaningfulRecords, reason: null };
-    });
+    return buildChildMonthlyEligibility(children, grouped);
   };
 
   const openBulkModal = async () => {
