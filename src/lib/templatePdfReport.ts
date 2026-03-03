@@ -47,8 +47,14 @@ const hoursBetween = (start: number | null, end: number | null): number => {
   return round1((end - start) / 3_600_000);
 };
 
+const parseLocalDate = (isoDate: string): Date => {
+  const [y, m, d] = isoDate.split("-").map((v) => Number(v));
+  if (!y || !m || !d) return new Date(isoDate);
+  return new Date(y, m - 1, d);
+};
+
 const ageYears = (dobIso: string): number => {
-  const dob = new Date(dobIso);
+  const dob = parseLocalDate(dobIso);
   const today = new Date();
   let years = today.getFullYear() - dob.getFullYear();
   const m = today.getMonth() - dob.getMonth();
@@ -135,7 +141,7 @@ export const generateTemplatePdfBlob = async (input: {
   const child = input.child;
   const provider = input.provider;
   const monthYear = format(new Date(input.year, input.month - 1, 1), "MMMM yyyy");
-  const dob = format(new Date(child.dob), "MM/dd/yyyy");
+  const dob = format(parseLocalDate(child.dob), "MM/dd/yyyy");
   const age = ageYears(child.dob);
   const ageLabel = `${age} ${age === 1 ? "year" : "years"}`;
 

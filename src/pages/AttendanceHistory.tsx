@@ -5,12 +5,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { format, parseISO, getDaysInMonth } from "date-fns";
-import { ChevronLeft, ChevronRight, Save, X, AlertTriangle, Printer } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save, X, AlertTriangle, Printer, Eye, Download } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { generateTemplatePdfBlob } from "@/lib/templatePdfReport";
 import { validateAttendanceTimes } from "@/lib/attendanceValidation";
+import JSZip from "jszip";
 
 interface AttendanceRecord {
   id: string;
@@ -42,6 +44,12 @@ interface ProviderProfile {
   provider_alt_id: string | null;
 }
 
+interface BulkReportItem {
+  child: ChildRecord;
+  reason: string | null;
+  records: AttendanceRecord[];
+}
+
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
@@ -58,6 +66,10 @@ const AttendanceHistory = () => {
   const [edits, setEdits] = useState<Record<string, Partial<AttendanceRecord>>>({});
   const [profile, setProfile] = useState<ProviderProfile | null>(null);
   const [loading, setLoading] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkDownloading, setBulkDownloading] = useState(false);
+  const [bulkItems, setBulkItems] = useState<BulkReportItem[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -110,6 +122,13 @@ const AttendanceHistory = () => {
     const day = i + 1;
     return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
   });
+
+  const getMonthBounds = () => {
+    const startDate = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+    const monthDays = getDaysInMonth(new Date(year, month));
+    const endDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(monthDays).padStart(2, "0")}`;
+    return { startDate, endDate };
+  };
 
   const getRecord = (date: string) => records.find(r => r.date === date);
 
@@ -210,49 +229,7 @@ const AttendanceHistory = () => {
     setRecords(data || []);
   };
 
-  const printMonthlyReport = async () => {
-    const printWindow = window.open("", "_blank", "width=1100,height=800");
-    if (!printWindow) {
-      toast.error("Popup blocked. Allow popups to print.");
-      return;
-    }
-
-    printWindow.document.open();
-    printWindow.document.write(`
-      <!doctype html>
-      <html>
-        <head><title>Preparing PDF...</title></head>
-        <body style="font-family: Arial, sans-serif; padding: 24px;">Preparing monthly PDF...</body>
-      </html>
-    `);
-    printWindow.document.close();
-
-    const child = children.find((c) => c.id === selectedChild);
-    if (!child) {
-      toast.error("Select a child first");
-      printWindow.close();
-      return;
-    }
-
-    if (!user) {
-      toast.error("You must be signed in");
-      printWindow.close();
-      return;
-    }
-
-    if (hasEdits) {
-      toast.error("Save changes before printing the monthly report");
-      printWindow.close();
-      return;
-    }
-
-    const invalidDays = allDays.filter((date) => validateDay(date).hasError);
-    if (invalidDays.length > 0) {
-      toast.error(`Cannot print: fix ${invalidDays.length} invalid row(s) for this month first`);
-      printWindow.close();
-      return;
-    }
-
+  const generateReportForChild = async (child: ChildRecord, childRecords: AttendanceRecord[]) => {
     const { blob, totalHours, filename } = await generateTemplatePdfBlob({
       child,
       provider: profile ?? {
@@ -261,7 +238,7 @@ const AttendanceHistory = () => {
         daycare_name: null,
         provider_alt_id: null,
       },
-      attendance: records.map((r) => ({
+      attendance: childRecords.map((r) => ({
         date: r.date,
         check_in_am: r.check_in_am,
         check_out_am: r.check_out_am,
@@ -273,7 +250,7 @@ const AttendanceHistory = () => {
       year,
     });
 
-    const { error } = await supabase.from("monthly_sheets").upsert(
+    await supabase.from("monthly_sheets").upsert(
       {
         child_id: child.id,
         month: month + 1,
@@ -283,22 +260,167 @@ const AttendanceHistory = () => {
       { onConflict: "child_id,month,year" }
     );
 
-    if (error) {
-      toast.error(error.message);
+    return { blob, filename };
+  };
+
+  const prepareMonthlyReportPdf = async () => {
+    const child = children.find((c) => c.id === selectedChild);
+    if (!child) {
+      toast.error("Select a child first");
+      return null;
     }
 
-    const pdfUrl = URL.createObjectURL(blob);
-    printWindow.location.replace(pdfUrl);
+    if (!user) {
+      toast.error("You must be signed in");
+      return null;
+    }
 
-    // Download fallback in case embedded PDF viewer is disabled.
+    if (hasEdits) {
+      toast.error("Save changes before printing the monthly report");
+      return null;
+    }
+
+    const invalidDays = allDays.filter((date) => validateDay(date).hasError);
+    if (invalidDays.length > 0) {
+      toast.error(`Cannot print: fix ${invalidDays.length} invalid row(s) for this month first`);
+      return null;
+    }
+
+    if (records.length === 0) {
+      toast.error("No entries for selected month");
+      return null;
+    }
+
+    return generateReportForChild(child, records);
+  };
+
+  const downloadMonthlyReport = async () => {
+    const payload = await prepareMonthlyReportPdf();
+    if (!payload) return;
+
+    const pdfUrl = URL.createObjectURL(payload.blob);
     const anchor = document.createElement("a");
     anchor.href = pdfUrl;
-    anchor.download = filename;
+    anchor.download = payload.filename;
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
-
     setTimeout(() => URL.revokeObjectURL(pdfUrl), 120_000);
+  };
+
+  const previewMonthlyReport = async () => {
+    const payload = await prepareMonthlyReportPdf();
+    if (!payload) return;
+
+    const previewWindow = window.open("", "_blank", "width=1100,height=800");
+    if (!previewWindow) {
+      toast.error("Popup blocked. Allow popups to preview.");
+      return;
+    }
+
+    const pdfUrl = URL.createObjectURL(payload.blob);
+    previewWindow.location.replace(pdfUrl);
+    setTimeout(() => URL.revokeObjectURL(pdfUrl), 120_000);
+  };
+
+  const buildBulkItems = async (): Promise<BulkReportItem[]> => {
+    if (children.length === 0) return [];
+    const childIds = children.map((c) => c.id);
+    const { startDate, endDate } = getMonthBounds();
+
+    const { data, error } = await supabase
+      .from("attendance")
+      .select("id, child_id, date, check_in_am, check_out_am, check_in_pm, check_out_pm, marked_absent, absence_reason, total_hours")
+      .in("child_id", childIds)
+      .gte("date", startDate)
+      .lte("date", endDate)
+      .order("date");
+
+    if (error) throw new Error(error.message);
+
+    const grouped = new Map<string, AttendanceRecord[]>();
+    (data || []).forEach((r) => {
+      const list = grouped.get(r.child_id) || [];
+      list.push(r);
+      grouped.set(r.child_id, list);
+    });
+
+    return children.map((child) => {
+      const childRecords = grouped.get(child.id) || [];
+      if (childRecords.length === 0) {
+        return { child, records: [], reason: "No entries for selected month" };
+      }
+
+      const invalidEntry = childRecords.some((r) =>
+        validateAttendanceTimes({
+          check_in_am: r.marked_absent ? null : r.check_in_am,
+          check_out_am: r.marked_absent ? null : r.check_out_am,
+          check_in_pm: r.marked_absent ? null : r.check_in_pm,
+          check_out_pm: r.marked_absent ? null : r.check_out_pm,
+        }).hasError
+      );
+
+      if (invalidEntry) {
+        return { child, records: childRecords, reason: "Invalid entries in selected month" };
+      }
+
+      return { child, records: childRecords, reason: null };
+    });
+  };
+
+  const openBulkModal = async () => {
+    if (!user) {
+      toast.error("You must be signed in");
+      return;
+    }
+    if (hasEdits) {
+      toast.error("Save changes before bulk download");
+      return;
+    }
+
+    setBulkLoading(true);
+    try {
+      const items = await buildBulkItems();
+      setBulkItems(items);
+      setBulkOpen(true);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to prepare bulk download");
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const downloadBulkReports = async () => {
+    const eligible = bulkItems.filter((item) => !item.reason);
+    if (eligible.length === 0) {
+      toast.error("No eligible children to download");
+      return;
+    }
+
+    setBulkDownloading(true);
+    try {
+      const zip = new JSZip();
+      for (const item of eligible) {
+        const result = await generateReportForChild(item.child, item.records);
+        zip.file(result.filename, result.blob);
+      }
+
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      const zipUrl = URL.createObjectURL(zipBlob);
+      const anchor = document.createElement("a");
+      anchor.href = zipUrl;
+      anchor.download = `monthly_reports_${MONTHS[month]}_${year}`.replace(/\s+/g, "_") + ".zip";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(zipUrl), 120_000);
+      toast.success(`Downloaded ${eligible.length} report(s)`);
+      setBulkOpen(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Bulk download failed");
+    } finally {
+      setBulkDownloading(false);
+    }
   };
 
   const changeMonth = (dir: number) => {
@@ -324,7 +446,13 @@ const AttendanceHistory = () => {
       <div className="flex items-center justify-between">
         <h1 className="font-heading text-3xl font-bold">Attendance History</h1>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={printMonthlyReport} className="gap-2" disabled={!selectedChild || loading}>
+          <Button variant="outline" onClick={openBulkModal} className="gap-2" disabled={loading || bulkLoading || children.length === 0}>
+            <Download className="w-4 h-4" /> Bulk Download
+          </Button>
+          <Button variant="outline" onClick={previewMonthlyReport} className="gap-2" disabled={!selectedChild || loading}>
+            <Eye className="w-4 h-4" /> Preview Monthly Report
+          </Button>
+          <Button variant="outline" onClick={downloadMonthlyReport} className="gap-2" disabled={!selectedChild || loading}>
             <Printer className="w-4 h-4" /> Print Monthly Report
           </Button>
           <Button onClick={saveAll} className="gap-2" disabled={!hasEdits}>
@@ -455,6 +583,58 @@ const AttendanceHistory = () => {
           </table>
         </CardContent>
       </Card>
+
+      <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Bulk Monthly Reports</DialogTitle>
+            <DialogDescription>
+              {MONTHS[month]} {year} eligibility. Children with invalid or missing entries are skipped.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-[420px] overflow-y-auto border rounded-md">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="text-left p-3 font-semibold">Child</th>
+                  <th className="text-left p-3 font-semibold">Status</th>
+                  <th className="text-left p-3 font-semibold">Reason</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bulkItems.map((item) => (
+                  <tr key={item.child.id} className="border-b last:border-0">
+                    <td className="p-3">{item.child.name}</td>
+                    <td className="p-3">
+                      {item.reason ? (
+                        <span className="text-destructive font-medium">Skipped</span>
+                      ) : (
+                        <span className="text-primary font-medium">Ready</span>
+                      )}
+                    </td>
+                    <td className="p-3 text-muted-foreground">{item.reason || "Will be downloaded"}</td>
+                  </tr>
+                ))}
+                {bulkItems.length === 0 && (
+                  <tr>
+                    <td className="p-3 text-muted-foreground" colSpan={3}>No children found.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setBulkOpen(false)} disabled={bulkDownloading}>
+              Cancel
+            </Button>
+            <Button onClick={downloadBulkReports} disabled={bulkDownloading || bulkItems.filter((i) => !i.reason).length === 0}>
+              {bulkDownloading ? "Preparing..." : `Download Valid (${bulkItems.filter((i) => !i.reason).length})`}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
