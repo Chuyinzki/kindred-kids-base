@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { format, parseISO, getDaysInMonth } from "date-fns";
 import { ChevronLeft, ChevronRight, Save, X, AlertTriangle, Printer } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { buildMonthlyReport, buildMonthlyReportPrintHtml } from "@/lib/monthlyReport";
+import { generateTemplatePdfBlob } from "@/lib/templatePdfReport";
 
 interface AttendanceRecord {
   id: string;
@@ -38,6 +38,7 @@ interface ProviderProfile {
   provider_name: string | null;
   provider_number: string | null;
   daycare_name: string | null;
+  provider_alt_id: string | null;
 }
 
 const MONTHS = [
@@ -72,7 +73,7 @@ const AttendanceHistory = () => {
 
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("provider_name, provider_number, daycare_name")
+        .select("provider_name, provider_number, daycare_name, provider_alt_id")
         .eq("user_id", user.id)
         .single();
       setProfile(profileData ?? null);
@@ -250,8 +251,8 @@ const AttendanceHistory = () => {
     printWindow.document.write(`
       <!doctype html>
       <html>
-        <head><title>Preparing report...</title></head>
-        <body style="font-family: Arial, sans-serif; padding: 24px;">Preparing monthly report...</body>
+        <head><title>Preparing PDF...</title></head>
+        <body style="font-family: Arial, sans-serif; padding: 24px;">Preparing monthly PDF...</body>
       </html>
     `);
     printWindow.document.close();
@@ -269,12 +270,13 @@ const AttendanceHistory = () => {
       return;
     }
 
-    const report = buildMonthlyReport({
+    const { blob, totalHours, filename } = await generateTemplatePdfBlob({
       child,
       provider: profile ?? {
         provider_name: null,
         provider_number: null,
         daycare_name: null,
+        provider_alt_id: null,
       },
       attendance: records.map((r) => ({
         date: r.date,
@@ -283,7 +285,6 @@ const AttendanceHistory = () => {
         check_in_pm: r.check_in_pm,
         check_out_pm: r.check_out_pm,
         marked_absent: r.marked_absent,
-        absence_reason: r.absence_reason,
       })),
       month: month + 1,
       year,
@@ -294,7 +295,7 @@ const AttendanceHistory = () => {
         child_id: child.id,
         month: month + 1,
         year,
-        total_month_hours: report.total_month_hours,
+        total_month_hours: totalHours,
       },
       { onConflict: "child_id,month,year" }
     );
@@ -303,11 +304,18 @@ const AttendanceHistory = () => {
       toast.error(error.message);
     }
 
-    printWindow.document.open();
-    printWindow.document.write(buildMonthlyReportPrintHtml(report));
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => printWindow.print(), 250);
+    const pdfUrl = URL.createObjectURL(blob);
+    printWindow.location.replace(pdfUrl);
+
+    // Download fallback in case embedded PDF viewer is disabled.
+    const anchor = document.createElement("a");
+    anchor.href = pdfUrl;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+
+    setTimeout(() => URL.revokeObjectURL(pdfUrl), 120_000);
   };
 
   const changeMonth = (dir: number) => {
@@ -326,7 +334,6 @@ const AttendanceHistory = () => {
     return { dayOfWeek, dayNum };
   };
 
-  const childName = children.find(c => c.id === selectedChild)?.name || "";
   const hasEdits = Object.keys(edits).length > 0;
 
   return (
