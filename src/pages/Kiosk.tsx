@@ -89,14 +89,21 @@ const Kiosk = () => {
 
   useEffect(() => {
     const fetchChildren = async () => {
+      const scopedProviderId = session?.user?.id || sessionStorage.getItem("kiosk_provider_id");
+      if (!scopedProviderId) {
+        setChildren([]);
+        return;
+      }
+
       const { data } = await supabase
         .from("children")
         .select("id, name, family_pin, parent_name")
+        .eq("provider_id", scopedProviderId)
         .order("name");
       setChildren(data || []);
     };
     fetchChildren();
-  }, []);
+  }, [session]);
 
   const handleSelectChild = async (child: ChildInfo) => {
     setSelectedChild(child);

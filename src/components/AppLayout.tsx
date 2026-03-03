@@ -42,6 +42,9 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   }, [daycareName]);
 
   const enterKioskMode = async () => {
+    if (user?.id) {
+      sessionStorage.setItem("kiosk_provider_id", user.id);
+    }
     await signOut();
     navigate("/kiosk");
   };
