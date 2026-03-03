@@ -110,6 +110,9 @@ const Landing = () => {
               </Button>
             </a>
           </div>
+          <p className="mt-6 text-sm md:text-base text-muted-foreground/90 italic">
+            Built with love for my mom, Georgina, and originally created for her daycare, Blossom Kids.
+          </p>
         </div>
       </section>
 
@@ -207,6 +210,11 @@ const Landing = () => {
               COPPA Notice
             </Link>
           </div>
+        </div>
+        <div className="container px-4 pb-6 text-center">
+          <p className="text-xs text-muted-foreground/80">
+            Built with love for my mom, Georgina, and originally created for her daycare, Blossom Kids.
+          </p>
         </div>
       </footer>
     </div>

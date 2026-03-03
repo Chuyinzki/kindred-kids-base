@@ -102,6 +102,14 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
       <main className="container px-4 py-6">
         {children}
       </main>
+
+      <footer className="border-t border-border/70 bg-card/40">
+        <div className="container px-4 py-3 text-center">
+          <p className="text-xs text-muted-foreground/80">
+            Built with love for my mom, Georgina, and originally created for her daycare, Blossom Kids.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 };
