@@ -41,6 +41,8 @@ const parseLocalDate = (isoDate: string): Date => {
   return new Date(y, m - 1, d);
 };
 
+const normalizeChildId = (value: string): string => value.trim().toLowerCase();
+
 const Children = () => {
   const { user } = useAuth();
   const [children, setChildren] = useState<Child[]>([]);
@@ -72,6 +74,16 @@ const Children = () => {
       return;
     }
 
+    const duplicateChild = children.find(
+      (child) =>
+        child.id !== editingId &&
+        normalizeChildId(child.child_id_number) === normalizeChildId(form.child_id_number)
+    );
+    if (duplicateChild) {
+      toast.error(`Child ID "${form.child_id_number.trim()}" is already assigned to ${duplicateChild.name}`);
+      return;
+    }
+
     const samePinChildren = children.filter(
       (c) => c.family_pin === form.family_pin && c.id !== editingId
     );
@@ -89,6 +101,7 @@ const Children = () => {
 
     const payload = {
       ...form,
+      child_id_number: form.child_id_number.trim(),
       family_alt_id: form.family_alt_id || null,
       specialist_tech_no: form.specialist_tech_no || null,
       provider_id: user.id,
@@ -96,11 +109,25 @@ const Children = () => {
 
     if (editingId) {
       const { error } = await supabase.from("children").update(payload).eq("id", editingId);
-      if (error) toast.error(error.message);
+      if (error) {
+        if (error.code === "23505") {
+          toast.error("That Child ID is already in use. Please choose a different ID.");
+          return;
+        }
+        toast.error(error.message);
+        return;
+      }
       else toast.success("Child updated");
     } else {
       const { error } = await supabase.from("children").insert(payload);
-      if (error) toast.error(error.message);
+      if (error) {
+        if (error.code === "23505") {
+          toast.error("That Child ID is already in use. Please choose a different ID.");
+          return;
+        }
+        toast.error(error.message);
+        return;
+      }
       else toast.success("Child added");
     }
 

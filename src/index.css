@@ -96,6 +96,28 @@
     font-family: var(--font-body);
   }
 
+  html.kiosk-mode,
+  body.kiosk-mode {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior-y: none;
+  }
+
+  body.kiosk-mode {
+    touch-action: pan-x;
+    -webkit-overflow-scrolling: auto;
+  }
+
+  body.kiosk-mode #root {
+    min-height: 100dvh;
+    overscroll-behavior-y: none;
+  }
+
+  body.kiosk-mode .kiosk-shell {
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
   }

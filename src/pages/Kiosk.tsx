@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Baby, LogIn, LogOut, ArrowLeft, Clock, XCircle, MonitorSmartphone } from "lucide-react";
+import { LogIn, LogOut, ArrowLeft, Clock, XCircle, MonitorSmartphone, Maximize, Minimize } from "lucide-react";
 
 type KioskStep = "select-child" | "enter-pin" | "action" | "done";
 type AttendanceStep = "check_in" | "out_choice" | "in_school" | "out_pm" | "finished";
@@ -40,7 +40,9 @@ const Kiosk = () => {
   const [childAttendance, setChildAttendance] = useState<AttendanceRecord | null>(null);
   const [pin, setPin] = useState("");
   const [message, setMessage] = useState("");
+  const [isFullscreen, setIsFullscreen] = useState(Boolean(document.fullscreenElement));
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pullStartYRef = useRef<number | null>(null);
 
   const resetKiosk = useCallback(() => {
     setStep("select-child");
@@ -73,6 +75,20 @@ const Kiosk = () => {
       window.removeEventListener("keydown", handler);
     };
   }, [restartTimer]);
+
+  useEffect(() => {
+    document.body.classList.add("kiosk-mode");
+    document.documentElement.classList.add("kiosk-mode");
+
+    const syncFullscreen = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", syncFullscreen);
+
+    return () => {
+      document.body.classList.remove("kiosk-mode");
+      document.documentElement.classList.remove("kiosk-mode");
+      document.removeEventListener("fullscreenchange", syncFullscreen);
+    };
+  }, []);
 
   useEffect(() => {
     // Kiosk mode is intentionally anonymous. Any existing admin session is cleared.
@@ -114,6 +130,44 @@ const Kiosk = () => {
     };
     fetchChildren();
   }, [session]);
+
+  useEffect(() => {
+    const onTouchStart = (event: TouchEvent) => {
+      pullStartYRef.current = event.touches[0]?.clientY ?? null;
+    };
+
+    const onTouchMove = (event: TouchEvent) => {
+      const startY = pullStartYRef.current;
+      const currentY = event.touches[0]?.clientY;
+      if (startY === null || currentY === undefined) return;
+
+      const pullingDown = currentY - startY > 12;
+      if (window.scrollY <= 0 && pullingDown) {
+        event.preventDefault();
+      }
+    };
+
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchmove", onTouchMove, { passive: false });
+
+    return () => {
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
+    };
+  }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        return;
+      }
+
+      await document.documentElement.requestFullscreen();
+    } catch {
+      toast.error("Fullscreen is not available on this device/browser.");
+    }
+  };
 
   const handleSelectChild = async (child: ChildInfo) => {
     setSelectedChild(child);
@@ -190,10 +244,16 @@ const Kiosk = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-lg">
+    <div className="kiosk-shell h-[100dvh] overflow-y-auto bg-background px-4 py-4">
+      <div className="mx-auto flex min-h-full w-full max-w-lg flex-col justify-center py-4">
         {/* Header */}
         <div className="text-center mb-8">
+          <div className="mb-4 flex justify-end">
+            <Button variant="outline" size="sm" className="gap-2" onClick={toggleFullscreen}>
+              {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+              {isFullscreen ? "Exit Full Screen" : "Full Screen"}
+            </Button>
+          </div>
           <div className="mx-auto w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-3">
             <MonitorSmartphone className="w-8 h-8 text-primary" />
           </div>
