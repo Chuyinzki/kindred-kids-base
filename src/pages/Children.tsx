@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Search, Pencil, Trash2, Baby, CircleHelp } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Baby, CircleHelp, RefreshCw } from "lucide-react";
 import { format, differenceInYears, differenceInMonths } from "date-fns";
 
 interface Child {
@@ -40,6 +40,7 @@ const parseLocalDate = (isoDate: string): Date => {
 };
 
 const normalizeChildId = (value: string): string => value.trim().toLowerCase();
+const generateFamilyPin = (): string => String(Math.floor(Math.random() * 10000)).padStart(4, "0");
 
 const Children = () => {
   const { user } = useAuth();
@@ -155,6 +156,10 @@ const Children = () => {
     else { toast.success("Child removed"); fetchChildren(); }
   };
 
+  const autofillFamilyPin = () => {
+    setForm((prev) => ({ ...prev, family_pin: generateFamilyPin() }));
+  };
+
   const getAge = (dob: string) => {
     const birthDate = parseLocalDate(dob);
     const years = differenceInYears(new Date(), birthDate);
@@ -201,25 +206,37 @@ const Children = () => {
                   <Input type="date" value={form.dob} onChange={e => setForm(f => ({...f, dob: e.target.value}))} required />
                 </div>
                 <div className="space-y-1">
-                  <Label className="flex min-h-5 items-center gap-1.5">
-                    Family PIN (4 digits) *
-                    <TooltipProvider delayDuration={100}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            className="text-muted-foreground hover:text-foreground transition-colors"
-                            aria-label="Family PIN help"
-                          >
-                            <CircleHelp className="w-3.5 h-3.5" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" collisionPadding={16} className="max-w-xs">
-                          Parents use this 4-digit PIN in kiosk mode to sign children in and out.
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </Label>
+                  <div className="flex min-h-5 items-center justify-between gap-2">
+                    <Label className="flex items-center gap-1.5">
+                      Family PIN (4 digits) *
+                      <TooltipProvider delayDuration={100}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              className="text-muted-foreground hover:text-foreground transition-colors"
+                              aria-label="Family PIN help"
+                            >
+                              <CircleHelp className="w-3.5 h-3.5" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" collisionPadding={16} className="max-w-xs">
+                            Parents use this 4-digit PIN in kiosk mode to sign children in and out.
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-5 w-5 p-0 text-muted-foreground"
+                      aria-label="Generate family PIN"
+                      onClick={autofillFamilyPin}
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                    </Button>
+                  </div>
                   <Input value={form.family_pin} onChange={e => setForm(f => ({...f, family_pin: e.target.value.replace(/\D/g, "").slice(0,4)}))} maxLength={4} required placeholder="0000" />
                   {form.family_pin.length === 4 && children.some(c => c.family_pin === form.family_pin && c.id !== editingId) && (
                     <p className="text-[11px] text-amber-600">
