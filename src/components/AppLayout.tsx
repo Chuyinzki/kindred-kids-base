@@ -41,7 +41,16 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     document.title = daycareName ? `${daycareName} | Kindred Kids` : "Kindred Kids";
   }, [daycareName]);
 
+  const confirmNavigationIfUnsaved = () => {
+    const hasUnsavedHistoryChanges = sessionStorage.getItem("history_has_unsaved_changes") === "true";
+    if (!hasUnsavedHistoryChanges) return true;
+
+    return window.confirm("You have unsaved changes in Attendance History. Leave this page without saving?");
+  };
+
   const enterKioskMode = async () => {
+    if (!confirmNavigationIfUnsaved()) return;
+
     if (user?.id) {
       sessionStorage.setItem("kiosk_provider_id", user.id);
 
@@ -75,7 +84,13 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
       {/* Top Nav */}
       <header className="sticky top-0 z-50 bg-card border-b border-border shadow-sm">
         <div className="container flex items-center justify-between h-16 px-4">
-          <Link to="/dashboard" className="flex items-center gap-2">
+          <Link
+            to="/dashboard"
+            className="flex items-center gap-2"
+            onClick={(event) => {
+              if (!confirmNavigationIfUnsaved()) event.preventDefault();
+            }}
+          >
             <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center">
               <Baby className="w-5 h-5 text-primary" />
             </div>
@@ -84,7 +99,13 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
           <nav className="flex items-center gap-1">
             {navItems.map(item => (
-              <Link key={item.to} to={item.to}>
+              <Link
+                key={item.to}
+                to={item.to}
+                onClick={(event) => {
+                  if (!confirmNavigationIfUnsaved()) event.preventDefault();
+                }}
+              >
                 <Button
                   variant={location.pathname === item.to || (item.to === "/dashboard" && location.pathname === "/") ? "default" : "ghost"}
                   size="sm"
@@ -104,7 +125,15 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
               <MonitorSmartphone className="w-4 h-4" />
               <span className="hidden md:inline">Kiosk</span>
             </Button>
-            <Button variant="ghost" size="sm" onClick={signOut} className="ml-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={async () => {
+                if (!confirmNavigationIfUnsaved()) return;
+                await signOut();
+              }}
+              className="ml-2"
+            >
               <LogOut className="w-4 h-4" />
             </Button>
           </nav>

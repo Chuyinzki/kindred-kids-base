@@ -443,6 +443,30 @@ const AttendanceHistory = () => {
 
   const hasEdits = Object.keys(edits).length > 0;
 
+  useEffect(() => {
+    if (hasEdits) {
+      sessionStorage.setItem("history_has_unsaved_changes", "true");
+    } else {
+      sessionStorage.removeItem("history_has_unsaved_changes");
+    }
+
+    return () => {
+      sessionStorage.removeItem("history_has_unsaved_changes");
+    };
+  }, [hasEdits]);
+
+  useEffect(() => {
+    if (!hasEdits) return;
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasEdits]);
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
@@ -649,6 +673,20 @@ const AttendanceHistory = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {hasEdits && (
+        <div className="fixed bottom-4 right-4 z-40">
+          <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-background/95 p-2 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/85">
+            <span className="hidden text-sm font-medium text-primary sm:inline">Unsaved changes</span>
+            <Button variant="ghost" size="sm" onClick={() => setEdits({})}>
+              <X className="w-4 h-4 mr-1" /> Discard
+            </Button>
+            <Button size="sm" onClick={saveAll} className="gap-2 shadow-sm">
+              <Save className="w-4 h-4" /> Save Changes
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
