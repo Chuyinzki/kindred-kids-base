@@ -197,11 +197,11 @@ const Children = () => {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label>Date of Birth *</Label>
+                  <Label className="flex min-h-5 items-center">Date of Birth *</Label>
                   <Input type="date" value={form.dob} onChange={e => setForm(f => ({...f, dob: e.target.value}))} required />
                 </div>
                 <div className="space-y-1">
-                  <Label className="flex items-center gap-1.5">
+                  <Label className="flex min-h-5 items-center gap-1.5">
                     Family PIN (4 digits) *
                     <TooltipProvider delayDuration={100}>
                       <Tooltip>
