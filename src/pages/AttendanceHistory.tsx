@@ -25,7 +25,6 @@ interface AttendanceRecord {
   check_out_pm: string | null;
   marked_absent: boolean;
   absence_reason: string | null;
-  total_hours: number;
 }
 
 interface ChildRecord {
@@ -106,7 +105,7 @@ const AttendanceHistory = () => {
 
       const { data } = await supabase
         .from("attendance")
-        .select("id, child_id, date, check_in_am, check_out_am, check_in_pm, check_out_pm, marked_absent, absence_reason, total_hours")
+        .select("id, child_id, date, check_in_am, check_out_am, check_in_pm, check_out_pm, marked_absent, absence_reason")
         .eq("child_id", selectedChild)
         .gte("date", startDate)
         .lte("date", endDate)
@@ -242,7 +241,7 @@ const AttendanceHistory = () => {
     const endDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
     const { data } = await supabase
       .from("attendance")
-      .select("id, child_id, date, check_in_am, check_out_am, check_in_pm, check_out_pm, marked_absent, absence_reason, total_hours")
+      .select("id, child_id, date, check_in_am, check_out_am, check_in_pm, check_out_pm, marked_absent, absence_reason")
       .eq("child_id", selectedChild)
       .gte("date", startDate)
       .lte("date", endDate)
@@ -354,7 +353,7 @@ const AttendanceHistory = () => {
 
     const { data, error } = await supabase
       .from("attendance")
-      .select("id, child_id, date, check_in_am, check_out_am, check_in_pm, check_out_pm, marked_absent, absence_reason, total_hours")
+      .select("id, child_id, date, check_in_am, check_out_am, check_in_pm, check_out_pm, marked_absent, absence_reason")
       .in("child_id", childIds)
       .gte("date", startDate)
       .lte("date", endDate)

@@ -26,8 +26,6 @@ export type Database = {
           date: string
           id: string
           marked_absent: boolean
-          total_hours: number
-          validation_flag: boolean
         }
         Insert: {
           absence_reason?: string | null
@@ -40,8 +38,6 @@ export type Database = {
           date?: string
           id?: string
           marked_absent?: boolean
-          total_hours?: number
-          validation_flag?: boolean
         }
         Update: {
           absence_reason?: string | null
@@ -54,8 +50,6 @@ export type Database = {
           date?: string
           id?: string
           marked_absent?: boolean
-          total_hours?: number
-          validation_flag?: boolean
         }
         Relationships: [
           {
@@ -118,7 +112,6 @@ export type Database = {
           created_at: string
           id: string
           month: number
-          pdf_url: string | null
           total_month_hours: number
           year: number
         }
@@ -127,7 +120,6 @@ export type Database = {
           created_at?: string
           id?: string
           month: number
-          pdf_url?: string | null
           total_month_hours?: number
           year: number
         }
@@ -136,7 +128,6 @@ export type Database = {
           created_at?: string
           id?: string
           month?: number
-          pdf_url?: string | null
           total_month_hours?: number
           year?: number
         }

@@ -21,7 +21,6 @@ interface ChildWithAttendance {
     check_in_pm: string | null;
     check_out_pm: string | null;
     marked_absent: boolean;
-    total_hours: number;
   };
 }
 
