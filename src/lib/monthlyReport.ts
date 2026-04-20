@@ -8,7 +8,6 @@ export interface MonthlyReportChild {
   dob: string;
   child_id_number: string;
   family_number: string;
-  family_alt_id: string | null;
   parent_name: string;
 }
 
@@ -16,6 +15,7 @@ export interface MonthlyReportProvider {
   provider_name: string | null;
   provider_number: string | null;
   daycare_name: string | null;
+  provider_alt_id?: string | null;
 }
 
 export interface MonthlyReportAttendance {
@@ -251,7 +251,7 @@ export const buildMonthlyReportPrintHtml = (report: MonthlyReport): string => {
       <div class="header-grid">
         <div><div class="label">Name of Parent</div><div class="line">${esc(report.child.parent_name)}</div></div>
         <div><div class="label">Family #</div><div class="line">${esc(report.child.family_number)}</div></div>
-        <div><div class="label">ID Alt (C,E,F)</div><div class="line">${esc(report.child.family_alt_id || "")}</div></div>
+        <div><div class="label">Provider Alt ID</div><div class="line">${esc(report.provider.provider_alt_id || "")}</div></div>
 
         <div><div class="label">Name of Child</div><div class="line">${esc(report.child.name)}</div></div>
         <div><div class="label">DOB</div><div class="line">${esc(report.child.dob)}</div></div>

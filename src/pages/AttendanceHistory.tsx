@@ -34,7 +34,6 @@ interface ChildRecord {
   child_id_number: string;
   specialist_tech_no: string | null;
   family_number: string;
-  family_alt_id: string | null;
   parent_name: string;
 }
 
@@ -77,7 +76,7 @@ const AttendanceHistory = () => {
     const fetchChildren = async () => {
       const { data } = await supabase
         .from("children")
-        .select("id, name, dob, child_id_number, specialist_tech_no, family_number, family_alt_id, parent_name")
+        .select("id, name, dob, child_id_number, specialist_tech_no, family_number, parent_name")
         .eq("provider_id", user.id)
         .order("name");
       setChildren(data || []);

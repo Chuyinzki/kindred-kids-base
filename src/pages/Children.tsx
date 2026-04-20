@@ -17,7 +17,6 @@ interface Child {
   name: string;
   dob: string;
   family_number: string;
-  family_alt_id: string | null;
   parent_name: string;
   specialist_tech_no: string | null;
   family_pin: string;
@@ -29,7 +28,6 @@ const emptyForm = {
   name: "",
   dob: "",
   family_number: "",
-  family_alt_id: "",
   parent_name: "",
   specialist_tech_no: "",
   family_pin: "",
@@ -102,7 +100,6 @@ const Children = () => {
     const payload = {
       ...form,
       child_id_number: form.child_id_number.trim(),
-      family_alt_id: form.family_alt_id || null,
       specialist_tech_no: form.specialist_tech_no || null,
       provider_id: user.id,
     };
@@ -143,7 +140,6 @@ const Children = () => {
       name: child.name,
       dob: child.dob,
       family_number: child.family_number,
-      family_alt_id: child.family_alt_id || "",
       parent_name: child.parent_name,
       specialist_tech_no: child.specialist_tech_no || "",
       family_pin: child.family_pin,
@@ -232,15 +228,9 @@ const Children = () => {
                   )}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label>Family # *</Label>
-                  <Input value={form.family_number} onChange={e => setForm(f => ({...f, family_number: e.target.value}))} required />
-                </div>
-                <div className="space-y-1">
-                  <Label>Alt ID</Label>
-                  <Input value={form.family_alt_id} onChange={e => setForm(f => ({...f, family_alt_id: e.target.value}))} />
-                </div>
+              <div className="space-y-1">
+                <Label>Family # *</Label>
+                <Input value={form.family_number} onChange={e => setForm(f => ({...f, family_number: e.target.value}))} required />
               </div>
               <div className="space-y-1">
                 <Label>Parent Name *</Label>

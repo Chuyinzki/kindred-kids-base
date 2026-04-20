@@ -11,7 +11,6 @@ export interface TemplateReportChild {
   child_id_number: string;
   specialist_tech_no: string | null;
   family_number: string;
-  family_alt_id: string | null;
   parent_name: string;
 }
 

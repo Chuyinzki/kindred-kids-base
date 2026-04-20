@@ -66,7 +66,6 @@ export type Database = {
           child_id_number: string
           created_at: string
           dob: string
-          family_alt_id: string | null
           family_number: string
           family_pin: string
           id: string
@@ -80,7 +79,6 @@ export type Database = {
           child_id_number: string
           created_at?: string
           dob: string
-          family_alt_id?: string | null
           family_number: string
           family_pin: string
           id?: string
@@ -94,7 +92,6 @@ export type Database = {
           child_id_number?: string
           created_at?: string
           dob?: string
-          family_alt_id?: string | null
           family_number?: string
           family_pin?: string
           id?: string
