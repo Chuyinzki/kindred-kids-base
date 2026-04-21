@@ -71,7 +71,12 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
         sessionStorage.setItem("kiosk_daycare_name", session.daycare_name || daycareName || "Kindred Kids");
       } catch (error) {
         console.error(error);
-        const message = error instanceof Error ? error.message : "Unable to start kiosk mode.";
+        const message =
+          error instanceof Error
+            ? error.message
+            : typeof error === "object" && error !== null && "message" in error && typeof error.message === "string"
+              ? error.message
+              : "Unable to start kiosk mode.";
         toast.error(message);
         return;
       }

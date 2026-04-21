@@ -99,4 +99,25 @@ describe("BillingBanner", () => {
     expect(screen.getByText(/subscription ends soon/i)).toBeInTheDocument();
     expect(screen.getByText(/your access stays active until/i)).toBeInTheDocument();
   });
+
+  it("shows payment attention messaging for past due accounts", () => {
+    useBillingMock.mockReturnValue({
+      profile: {
+        is_complimentary: false,
+        subscription_status: "past_due",
+        current_period_ends_at: "2026-05-01T00:00:00.000Z",
+        trial_ends_at: null,
+      },
+      isBlocked: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <BillingBanner />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText(/payment needs attention/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /manage billing/i })).toHaveAttribute("href", "/settings");
+  });
 });
