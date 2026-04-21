@@ -338,6 +338,7 @@ export type Database = {
           check_out_pm: string | null
           id: string
           marked_absent: boolean
+          pin_valid: boolean
         }[]
       }
       kiosk_list_children: {
@@ -365,6 +366,7 @@ export type Database = {
           check_out_pm: string | null
           marked_absent: boolean
           message: string
+          pin_valid: boolean
         }[]
       }
       sync_billing_state: {

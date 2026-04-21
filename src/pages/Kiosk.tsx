@@ -195,7 +195,21 @@ const Kiosk = () => {
       return;
     }
 
-    setChildAttendance(data?.[0] ?? null);
+    const result = data?.[0];
+    if (!result?.pin_valid) {
+      toast.error("Incorrect PIN");
+      setPin("");
+      return;
+    }
+
+    setChildAttendance(result?.id ? {
+      id: result.id,
+      check_in_am: result.check_in_am,
+      check_out_am: result.check_out_am,
+      check_in_pm: result.check_in_pm,
+      check_out_pm: result.check_out_pm,
+      marked_absent: result.marked_absent,
+    } : null);
     setStep("action");
   };
 
@@ -219,6 +233,11 @@ const Kiosk = () => {
     }
 
     const result = data?.[0];
+    if (!result?.pin_valid) {
+      toast.error("Incorrect PIN");
+      setPin("");
+      return;
+    }
     setMessage(`${result?.message || selectedChild.name} at ${format(new Date(), "h:mm a")}`);
     if (result) {
       setChildAttendance({
