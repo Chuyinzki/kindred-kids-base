@@ -156,41 +156,49 @@ const SettingsPage = () => {
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="font-medium">{PLAN_NAME}</p>
-              <p className="text-sm text-muted-foreground">${PLAN_PRICE}/{PLAN_INTERVAL} with a {TRIAL_DAYS}-day free trial</p>
+              <p className="font-medium">{profile?.is_complimentary ? "Lifetime complimentary access" : PLAN_NAME}</p>
+              <p className="text-sm text-muted-foreground">
+                {profile?.is_complimentary
+                  ? (profile.complimentary_note || "This provider account is exempt from billing and keeps full access.")
+                  : `$${PLAN_PRICE}/${PLAN_INTERVAL} with a ${TRIAL_DAYS}-day free trial`}
+              </p>
             </div>
             {profile && (
-              <Badge variant={formatSubscriptionTone(profile.subscription_status)}>
-                {formatSubscriptionLabel(profile.subscription_status)}
+              <Badge variant={formatSubscriptionTone(profile.subscription_status, profile.is_complimentary)}>
+                {formatSubscriptionLabel(profile.subscription_status, profile.is_complimentary)}
               </Badge>
             )}
           </div>
 
-          {profile?.trial_ends_at && (
+          {!profile?.is_complimentary && profile?.trial_ends_at && (
             <p className="text-sm text-muted-foreground">
               Trial ends on {format(new Date(profile.trial_ends_at), "MMMM d, yyyy")}.
             </p>
           )}
 
-          {profile?.current_period_ends_at && (
+          {!profile?.is_complimentary && profile?.current_period_ends_at && (
             <p className="text-sm text-muted-foreground">
               Current billing period ends on {format(new Date(profile.current_period_ends_at), "MMMM d, yyyy")}.
             </p>
           )}
 
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Button onClick={startCheckout} disabled={billingLoading}>
-              {profile?.stripe_customer_id ? "Update Subscription" : "Start Subscription"}
-            </Button>
-            {profile?.stripe_customer_id && (
-              <Button variant="outline" onClick={openPortal} disabled={billingLoading}>
-                Manage Billing
+          {!profile?.is_complimentary && (
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button onClick={startCheckout} disabled={billingLoading}>
+                {profile?.stripe_customer_id ? "Update Subscription" : "Start Subscription"}
               </Button>
-            )}
-          </div>
+              {profile?.stripe_customer_id && (
+                <Button variant="outline" onClick={openPortal} disabled={billingLoading}>
+                  Manage Billing
+                </Button>
+              )}
+            </div>
+          )}
 
           <p className="text-xs text-muted-foreground">
-            Need help with billing or invoices? Contact {SUPPORT_EMAIL}.
+            {profile?.is_complimentary
+              ? `This account is marked complimentary. Contact ${SUPPORT_EMAIL} only if you ever want to convert it to paid billing.`
+              : `Need help with billing or invoices? Contact ${SUPPORT_EMAIL}.`}
           </p>
         </CardContent>
       </Card>

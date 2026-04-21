@@ -18,15 +18,16 @@ export const BLOCKED_STATUSES: SubscriptionStatus[] = [
   "not_started",
 ];
 
-export const hasBillingAccess = (profile: Pick<ProviderProfile, "subscription_status" | "current_period_ends_at"> | null) => {
+export const hasBillingAccess = (profile: Pick<ProviderProfile, "subscription_status" | "current_period_ends_at" | "is_complimentary"> | null) => {
   if (!profile) return false;
+  if (profile.is_complimentary) return true;
   if (profile.subscription_status === "canceled") {
     return !profile.current_period_ends_at || new Date(profile.current_period_ends_at).getTime() > Date.now();
   }
   return ACCESSIBLE_STATUSES.includes(profile.subscription_status);
 };
 
-export const isBillingBlocked = (profile: Pick<ProviderProfile, "subscription_status" | "current_period_ends_at"> | null) =>
+export const isBillingBlocked = (profile: Pick<ProviderProfile, "subscription_status" | "current_period_ends_at" | "is_complimentary"> | null) =>
   !hasBillingAccess(profile);
 
 export const isTrialEndingSoon = (trialEndsAt: string | null) => {
@@ -36,7 +37,8 @@ export const isTrialEndingSoon = (trialEndsAt: string | null) => {
   return diff > 0 && diff <= 3 * 24 * 60 * 60 * 1000;
 };
 
-export const formatSubscriptionLabel = (status: SubscriptionStatus) => {
+export const formatSubscriptionLabel = (status: SubscriptionStatus, isComplimentary = false) => {
+  if (isComplimentary) return "Complimentary";
   switch (status) {
     case "trialing":
       return "Free trial";
@@ -59,7 +61,11 @@ export const formatSubscriptionLabel = (status: SubscriptionStatus) => {
   }
 };
 
-export const formatSubscriptionTone = (status: SubscriptionStatus): "default" | "secondary" | "destructive" | "outline" => {
+export const formatSubscriptionTone = (
+  status: SubscriptionStatus,
+  isComplimentary = false,
+): "default" | "secondary" | "destructive" | "outline" => {
+  if (isComplimentary) return "secondary";
   switch (status) {
     case "active":
       return "default";

@@ -64,9 +64,11 @@ export type Database = {
       billing_accounts: {
         Row: {
           cancel_at_period_end: boolean
+          complimentary_note: string | null
           created_at: string
           current_period_ends_at: string | null
           id: string
+          is_complimentary: boolean
           last_checkout_session_id: string | null
           last_invoice_status: string | null
           last_payment_error: string | null
@@ -82,9 +84,11 @@ export type Database = {
         }
         Insert: {
           cancel_at_period_end?: boolean
+          complimentary_note?: string | null
           created_at?: string
           current_period_ends_at?: string | null
           id?: string
+          is_complimentary?: boolean
           last_checkout_session_id?: string | null
           last_invoice_status?: string | null
           last_payment_error?: string | null
@@ -100,9 +104,11 @@ export type Database = {
         }
         Update: {
           cancel_at_period_end?: boolean
+          complimentary_note?: string | null
           created_at?: string
           current_period_ends_at?: string | null
           id?: string
+          is_complimentary?: boolean
           last_checkout_session_id?: string | null
           last_invoice_status?: string | null
           last_payment_error?: string | null
@@ -224,10 +230,12 @@ export type Database = {
       }
       profiles: {
         Row: {
+          complimentary_note: string | null
           created_at: string
           current_period_ends_at: string | null
           daycare_name: string | null
           id: string
+          is_complimentary: boolean
           provider_alt_id: string | null
           provider_name: string | null
           provider_number: string | null
@@ -240,10 +248,12 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          complimentary_note?: string | null
           created_at?: string
           current_period_ends_at?: string | null
           daycare_name?: string | null
           id?: string
+          is_complimentary?: boolean
           provider_alt_id?: string | null
           provider_name?: string | null
           provider_number?: string | null
@@ -256,10 +266,12 @@ export type Database = {
           user_id: string
         }
         Update: {
+          complimentary_note?: string | null
           created_at?: string
           current_period_ends_at?: string | null
           daycare_name?: string | null
           id?: string
+          is_complimentary?: boolean
           provider_alt_id?: string | null
           provider_name?: string | null
           provider_number?: string | null

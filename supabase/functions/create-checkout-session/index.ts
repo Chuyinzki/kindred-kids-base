@@ -40,12 +40,16 @@ Deno.serve(async (req) => {
 
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
-      .select("daycare_name, provider_name, stripe_customer_id, subscription_status, trial_ends_at")
+      .select("daycare_name, provider_name, stripe_customer_id, subscription_status, trial_ends_at, is_complimentary")
       .eq("user_id", user.id)
       .single();
 
     if (profileError || !profile) {
       throw new Error("Unable to load provider profile");
+    }
+
+    if (profile.is_complimentary) {
+      throw new Error("This provider account is marked as complimentary and does not need billing.");
     }
 
     let stripeCustomerId = profile.stripe_customer_id;

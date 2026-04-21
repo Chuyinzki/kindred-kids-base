@@ -36,12 +36,16 @@ Deno.serve(async (req) => {
 
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
-      .select("stripe_customer_id")
+      .select("stripe_customer_id, is_complimentary")
       .eq("user_id", user.id)
       .single();
 
     if (profileError || !profile?.stripe_customer_id) {
       throw new Error("No billing profile found yet. Start your subscription first.");
+    }
+
+    if (profile.is_complimentary) {
+      throw new Error("This provider account is marked as complimentary and does not use the billing portal.");
     }
 
     const portalSession = await stripe.billingPortal.sessions.create({

@@ -10,6 +10,7 @@ const BillingBanner = () => {
   const { profile, isBlocked } = useBilling();
 
   if (!profile) return null;
+  if (profile.is_complimentary) return null;
 
   if (isBlocked) {
     return (
