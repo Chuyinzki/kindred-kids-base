@@ -182,10 +182,14 @@ const Kiosk = () => {
     });
 
     if (error) {
+      console.error(error);
       if (error.message.toLowerCase().includes("expired")) {
         setStep("expired");
-      } else {
+        toast.error(error.message);
+      } else if (error.message.toLowerCase().includes("incorrect pin")) {
         toast.error("Incorrect PIN");
+      } else {
+        toast.error(error.message);
       }
       setPin("");
       return;

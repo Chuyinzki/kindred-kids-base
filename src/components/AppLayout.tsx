@@ -65,14 +65,14 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
           daycare_name_override: daycareName,
         });
         if (error) throw error;
-        const session = data?.[0];
+        const session = Array.isArray(data) ? data[0] : data;
         if (!session?.token) throw new Error("Unable to create kiosk session");
         sessionStorage.setItem("kiosk_session_token", session.token);
         sessionStorage.setItem("kiosk_daycare_name", session.daycare_name || daycareName || "Kindred Kids");
       } catch (error) {
         console.error(error);
-        toast.error("Unable to start kiosk mode until billing is active.");
-        navigate("/settings");
+        const message = error instanceof Error ? error.message : "Unable to start kiosk mode.";
+        toast.error(message);
         return;
       }
     }
