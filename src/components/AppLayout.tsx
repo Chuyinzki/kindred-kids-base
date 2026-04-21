@@ -1,16 +1,20 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBilling } from "@/contexts/BillingContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import BillingBanner from "@/components/BillingBanner";
+import { toast } from "sonner";
 import { Baby, LayoutDashboard, Users, MonitorSmartphone, LogOut, Settings, History } from "lucide-react";
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const { user, signOut } = useAuth();
+  const { isBlocked } = useBilling();
   const location = useLocation();
   const navigate = useNavigate();
   const [daycareName, setDaycareName] = useState(
-    () => localStorage.getItem("daycare_name") || "Little Stars"
+    () => localStorage.getItem("daycare_name") || "Kindred Kids"
   );
 
   useEffect(() => {
@@ -30,7 +34,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const onUpdated = (event: Event) => {
       const custom = event as CustomEvent<{ daycareName?: string }>;
-      const nextName = custom.detail?.daycareName || localStorage.getItem("daycare_name") || "Little Stars";
+      const nextName = custom.detail?.daycareName || localStorage.getItem("daycare_name") || "Kindred Kids";
       setDaycareName(nextName);
     };
     window.addEventListener("daycare-name-updated", onUpdated);
@@ -50,23 +54,27 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
   const enterKioskMode = async () => {
     if (!confirmNavigationIfUnsaved()) return;
+    if (isBlocked) {
+      navigate("/settings");
+      return;
+    }
 
     if (user?.id) {
-      sessionStorage.setItem("kiosk_provider_id", user.id);
-
-      // Capture provider-specific branding for kiosk before signing out.
-      let kioskName = daycareName;
       try {
-        const { data } = await supabase
-          .from("profiles")
-          .select("daycare_name, provider_name")
-          .eq("user_id", user.id)
-          .single();
-        kioskName = data?.daycare_name || data?.provider_name || kioskName;
-      } catch {
-        // Keep existing in-memory name if profile fetch fails.
+        const { data, error } = await supabase.rpc("create_kiosk_session", {
+          daycare_name_override: daycareName,
+        });
+        if (error) throw error;
+        const session = data?.[0];
+        if (!session?.token) throw new Error("Unable to create kiosk session");
+        sessionStorage.setItem("kiosk_session_token", session.token);
+        sessionStorage.setItem("kiosk_daycare_name", session.daycare_name || daycareName || "Kindred Kids");
+      } catch (error) {
+        console.error(error);
+        toast.error("Unable to start kiosk mode until billing is active.");
+        navigate("/settings");
+        return;
       }
-      sessionStorage.setItem("kiosk_daycare_name", kioskName || "Kindred Kids");
     }
     await signOut();
     navigate("/kiosk");
@@ -142,14 +150,17 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
       {/* Main Content */}
       <main className="container px-4 py-6">
+        <BillingBanner />
         {children}
       </main>
 
       <footer className="border-t border-border/70 bg-card/40">
         <div className="container px-4 py-3 text-center">
-          <p className="text-xs text-muted-foreground/80">
-            Built with love for my mom, Georgina, and originally created for her daycare, Blossom Kids.
-          </p>
+          <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground/80">
+            <p>Built for childcare providers who want cleaner attendance records and faster reporting.</p>
+            <Link to="/privacy" className="underline underline-offset-2 hover:text-foreground">Privacy</Link>
+            <Link to="/terms" className="underline underline-offset-2 hover:text-foreground">Terms</Link>
+          </div>
         </div>
       </footer>
     </div>

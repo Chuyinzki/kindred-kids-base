@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Baby, LogIn, UserPlus } from "lucide-react";
+import { APP_NAME, APP_TAGLINE, PLAN_INTERVAL, PLAN_NAME, PLAN_PRICE, TRIAL_DAYS } from "@/lib/brand";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -31,7 +32,7 @@ const Auth = () => {
       options: { emailRedirectTo: window.location.origin },
     });
     if (error) toast.error(error.message);
-    else toast.success("Check your email to confirm your account!");
+    else toast.success("Check your email to confirm your account and start your free trial.");
     setLoading(false);
   };
 
@@ -42,8 +43,11 @@ const Auth = () => {
           <div className="mx-auto w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-2">
             <Baby className="w-8 h-8 text-primary" />
           </div>
-          <CardTitle className="font-heading text-2xl">Little Stars Daycare</CardTitle>
-          <CardDescription>Manage your daycare with ease</CardDescription>
+          <CardTitle className="font-heading text-2xl">{APP_NAME}</CardTitle>
+          <CardDescription>{APP_TAGLINE}</CardDescription>
+          <p className="text-xs text-muted-foreground">
+            {TRIAL_DAYS}-day free trial, then {PLAN_NAME} for ${PLAN_PRICE}/{PLAN_INTERVAL}.
+          </p>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="signin" className="space-y-4">

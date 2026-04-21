@@ -1,6 +1,6 @@
 # Kindred Kids
 
-Production-ready daycare attendance and reporting app, published as a portfolio/showcase project.
+Production-ready daycare attendance and reporting app for home daycare providers, now wired for subscription billing and provider account monetization.
 
 ## Live App
 
@@ -13,6 +13,7 @@ https://kindred-kids-base.vercel.app/
 - Supports kiosk mode for parent PIN workflows
 - Generates monthly attendance PDFs from state-style templates
 - Supports single and bulk report downloads
+- Adds provider billing state, subscription gating, and Stripe-backed checkout/customer portal flows
 
 ## Tech Stack
 
@@ -36,6 +37,16 @@ Create `.env` from `.env.example`:
 VITE_SUPABASE_PROJECT_ID=your-supabase-project-id
 VITE_SUPABASE_PUBLISHABLE_KEY=your-supabase-anon-key
 VITE_SUPABASE_URL=https://your-supabase-project-id.supabase.co
+```
+
+Supabase Edge Functions env vars:
+
+```env
+APP_URL=https://your-app-domain.com
+STRIPE_SECRET_KEY=sk_live_or_test_...
+STRIPE_PRICE_ID_STARTER=price_...
+STRIPE_WEBHOOK_SIGNING_SECRET=whsec_...
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 ```
 
 ## Local Development
@@ -63,6 +74,19 @@ supabase db push
 
 Migrations live in `supabase/migrations`.
 
+4. Deploy edge functions:
+
+```bash
+supabase functions deploy create-checkout-session
+supabase functions deploy create-customer-portal
+supabase functions deploy stripe-webhook --no-verify-jwt
+```
+
+5. Configure Stripe:
+- Create one recurring monthly price for the `Starter` plan
+- Set your Stripe customer portal configuration
+- Point Stripe webhooks to `/functions/v1/stripe-webhook`
+
 ## Deploy (Vercel)
 
 1. Import repo into Vercel
@@ -70,6 +94,11 @@ Migrations live in `supabase/migrations`.
    - `VITE_SUPABASE_PROJECT_ID`
    - `VITE_SUPABASE_PUBLISHABLE_KEY`
    - `VITE_SUPABASE_URL`
+   - `APP_URL`
+   - `STRIPE_SECRET_KEY`
+   - `STRIPE_PRICE_ID_STARTER`
+   - `STRIPE_WEBHOOK_SIGNING_SECRET`
+   - `SUPABASE_SERVICE_ROLE_KEY`
 3. Build command: `npm run build`
 4. Output directory: `dist`
 

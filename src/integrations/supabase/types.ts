@@ -61,6 +61,63 @@ export type Database = {
           },
         ]
       }
+      billing_accounts: {
+        Row: {
+          cancel_at_period_end: boolean
+          created_at: string
+          current_period_ends_at: string | null
+          id: string
+          last_checkout_session_id: string | null
+          last_invoice_status: string | null
+          last_payment_error: string | null
+          raw_customer: Json | null
+          raw_subscription: Json | null
+          stripe_customer_id: string | null
+          stripe_price_id: string | null
+          stripe_subscription_id: string | null
+          subscription_status: Database["public"]["Enums"]["subscription_status"]
+          trial_ends_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cancel_at_period_end?: boolean
+          created_at?: string
+          current_period_ends_at?: string | null
+          id?: string
+          last_checkout_session_id?: string | null
+          last_invoice_status?: string | null
+          last_payment_error?: string | null
+          raw_customer?: Json | null
+          raw_subscription?: Json | null
+          stripe_customer_id?: string | null
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: Database["public"]["Enums"]["subscription_status"]
+          trial_ends_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cancel_at_period_end?: boolean
+          created_at?: string
+          current_period_ends_at?: string | null
+          id?: string
+          last_checkout_session_id?: string | null
+          last_invoice_status?: string | null
+          last_payment_error?: string | null
+          raw_customer?: Json | null
+          raw_subscription?: Json | null
+          stripe_customer_id?: string | null
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: Database["public"]["Enums"]["subscription_status"]
+          trial_ends_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       children: {
         Row: {
           child_id_number: string
@@ -103,6 +160,33 @@ export type Database = {
         }
         Relationships: []
       }
+      kiosk_sessions: {
+        Row: {
+          created_at: string
+          daycare_name: string | null
+          expires_at: string
+          provider_id: string
+          revoked_at: string | null
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          daycare_name?: string | null
+          expires_at?: string
+          provider_id: string
+          revoked_at?: string | null
+          token?: string
+        }
+        Update: {
+          created_at?: string
+          daycare_name?: string | null
+          expires_at?: string
+          provider_id?: string
+          revoked_at?: string | null
+          token?: string
+        }
+        Relationships: []
+      }
       monthly_sheets: {
         Row: {
           child_id: string
@@ -141,31 +225,49 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          current_period_ends_at: string | null
           daycare_name: string | null
           id: string
           provider_alt_id: string | null
           provider_name: string | null
           provider_number: string | null
+          stripe_customer_id: string | null
+          subscription_price_id: string | null
+          subscription_status: Database["public"]["Enums"]["subscription_status"]
+          subscription_updated_at: string
+          trial_ends_at: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          current_period_ends_at?: string | null
           daycare_name?: string | null
           id?: string
           provider_alt_id?: string | null
           provider_name?: string | null
           provider_number?: string | null
+          stripe_customer_id?: string | null
+          subscription_price_id?: string | null
+          subscription_status?: Database["public"]["Enums"]["subscription_status"]
+          subscription_updated_at?: string
+          trial_ends_at?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          current_period_ends_at?: string | null
           daycare_name?: string | null
           id?: string
           provider_alt_id?: string | null
           provider_name?: string | null
           provider_number?: string | null
+          stripe_customer_id?: string | null
+          subscription_price_id?: string | null
+          subscription_status?: Database["public"]["Enums"]["subscription_status"]
+          subscription_updated_at?: string
+          trial_ends_at?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -201,9 +303,95 @@ export type Database = {
         }
         Returns: boolean
       }
+      create_kiosk_session: {
+        Args: {
+          daycare_name_override?: string
+        }
+        Returns: {
+          daycare_name: string
+          expires_at: string
+          token: string
+        }[]
+      }
+      kiosk_get_child_state: {
+        Args: {
+          child_uuid: string
+          entered_pin: string
+          session_token: string
+        }
+        Returns: {
+          check_in_am: string | null
+          check_in_pm: string | null
+          check_out_am: string | null
+          check_out_pm: string | null
+          id: string
+          marked_absent: boolean
+        }[]
+      }
+      kiosk_list_children: {
+        Args: {
+          session_token: string
+        }
+        Returns: {
+          id: string
+          name: string
+          parent_name: string
+        }[]
+      }
+      kiosk_record_attendance: {
+        Args: {
+          action_name: string
+          child_uuid: string
+          entered_pin: string
+          session_token: string
+        }
+        Returns: {
+          attendance_id: string
+          check_in_am: string | null
+          check_in_pm: string | null
+          check_out_am: string | null
+          check_out_pm: string | null
+          marked_absent: boolean
+          message: string
+        }[]
+      }
+      sync_billing_state: {
+        Args: {
+          _cancel_at_period_end: boolean
+          _current_period_ends_at: string | null
+          _last_checkout_session_id: string | null
+          _last_invoice_status: string | null
+          _last_payment_error: string | null
+          _raw_customer: Json | null
+          _raw_subscription: Json | null
+          _stripe_customer_id: string | null
+          _stripe_price_id: string | null
+          _stripe_subscription_id: string | null
+          _subscription_status: Database["public"]["Enums"]["subscription_status"]
+          _trial_ends_at: string | null
+          _user_id: string
+        }
+        Returns: undefined
+      }
+      user_has_billing_access: {
+        Args: {
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "guest"
+      subscription_status:
+        | "trialing"
+        | "active"
+        | "past_due"
+        | "canceled"
+        | "unpaid"
+        | "expired"
+        | "incomplete"
+        | "incomplete_expired"
+        | "not_started"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -332,6 +520,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "guest"],
+      subscription_status: ["trialing", "active", "past_due", "canceled", "unpaid", "expired", "incomplete", "incomplete_expired", "not_started"],
     },
   },
 } as const

@@ -1,20 +1,17 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { LogIn, LogOut, ArrowLeft, Clock, XCircle, MonitorSmartphone, Maximize, Minimize } from "lucide-react";
+import { ArrowLeft, Clock, LogIn, LogOut, Maximize, Minimize, MonitorSmartphone, XCircle } from "lucide-react";
 
-type KioskStep = "select-child" | "enter-pin" | "action" | "done";
+type KioskStep = "select-child" | "enter-pin" | "action" | "done" | "expired";
 type AttendanceStep = "check_in" | "out_choice" | "in_school" | "out_pm" | "finished";
 
 interface ChildInfo {
   id: string;
   name: string;
-  family_pin: string;
   parent_name: string;
 }
 
@@ -27,14 +24,12 @@ interface AttendanceRecord {
   marked_absent: boolean;
 }
 
-const INACTIVITY_TIMEOUT = 12000; // 12 seconds
+const INACTIVITY_TIMEOUT = 12000;
 
 const Kiosk = () => {
-  const { session, signOut } = useAuth();
-  const [daycareName, setDaycareName] = useState(
-    sessionStorage.getItem("kiosk_daycare_name") || "Kindred Kids"
-  );
-  const [step, setStep] = useState<KioskStep>("select-child");
+  const kioskToken = sessionStorage.getItem("kiosk_session_token");
+  const [daycareName, setDaycareName] = useState(sessionStorage.getItem("kiosk_daycare_name") || "Kindred Kids");
+  const [step, setStep] = useState<KioskStep>(kioskToken ? "select-child" : "expired");
   const [children, setChildren] = useState<ChildInfo[]>([]);
   const [selectedChild, setSelectedChild] = useState<ChildInfo | null>(null);
   const [childAttendance, setChildAttendance] = useState<AttendanceRecord | null>(null);
@@ -45,24 +40,50 @@ const Kiosk = () => {
   const pullStartYRef = useRef<number | null>(null);
 
   const resetKiosk = useCallback(() => {
-    setStep("select-child");
+    setStep(kioskToken ? "select-child" : "expired");
     setSelectedChild(null);
     setChildAttendance(null);
     setPin("");
     setMessage("");
-  }, []);
+  }, [kioskToken]);
 
   const restartTimer = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    if (step !== "select-child") {
+    if (step !== "select-child" && step !== "expired") {
       timerRef.current = setTimeout(resetKiosk, INACTIVITY_TIMEOUT);
     }
-  }, [step, resetKiosk]);
+  }, [resetKiosk, step]);
+
+  const fetchChildren = useCallback(async () => {
+    if (!kioskToken) {
+      setChildren([]);
+      setStep("expired");
+      return;
+    }
+
+    const { data, error } = await supabase.rpc("kiosk_list_children", {
+      session_token: kioskToken,
+    });
+
+    if (error) {
+      setChildren([]);
+      setStep("expired");
+      return;
+    }
+
+    setChildren(data || []);
+  }, [kioskToken]);
+
+  useEffect(() => {
+    void fetchChildren();
+  }, [fetchChildren]);
 
   useEffect(() => {
     restartTimer();
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [step, restartTimer]);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [restartTimer]);
 
   useEffect(() => {
     const handler = () => restartTimer();
@@ -91,45 +112,13 @@ const Kiosk = () => {
   }, []);
 
   useEffect(() => {
-    // Kiosk mode is intentionally anonymous. Any existing admin session is cleared.
-    if (session) void signOut();
-  }, [session, signOut]);
-
-  useEffect(() => {
     const onUpdated = (event: Event) => {
       const custom = event as CustomEvent<{ daycareName?: string }>;
-      const next =
-        custom.detail?.daycareName ||
-        sessionStorage.getItem("kiosk_daycare_name") ||
-        "Kindred Kids";
-      setDaycareName(next);
+      setDaycareName(custom.detail?.daycareName || sessionStorage.getItem("kiosk_daycare_name") || "Kindred Kids");
     };
     window.addEventListener("daycare-name-updated", onUpdated);
     return () => window.removeEventListener("daycare-name-updated", onUpdated);
   }, []);
-
-  useEffect(() => {
-    const scopedName = sessionStorage.getItem("kiosk_daycare_name");
-    if (scopedName) setDaycareName(scopedName);
-  }, []);
-
-  useEffect(() => {
-    const fetchChildren = async () => {
-      const scopedProviderId = session?.user?.id || sessionStorage.getItem("kiosk_provider_id");
-      if (!scopedProviderId) {
-        setChildren([]);
-        return;
-      }
-
-      const { data } = await supabase
-        .from("children")
-        .select("id, name, family_pin, parent_name")
-        .eq("provider_id", scopedProviderId)
-        .order("name");
-      setChildren(data || []);
-    };
-    fetchChildren();
-  }, [session]);
 
   useEffect(() => {
     const onTouchStart = (event: TouchEvent) => {
@@ -141,8 +130,7 @@ const Kiosk = () => {
       const currentY = event.touches[0]?.clientY;
       if (startY === null || currentY === undefined) return;
 
-      const pullingDown = currentY - startY > 12;
-      if (window.scrollY <= 0 && pullingDown) {
+      if (window.scrollY <= 0 && currentY - startY > 12) {
         event.preventDefault();
       }
     };
@@ -162,91 +150,100 @@ const Kiosk = () => {
         await document.exitFullscreen();
         return;
       }
-
       await document.documentElement.requestFullscreen();
     } catch {
       toast.error("Fullscreen is not available on this device/browser.");
     }
   };
 
-  const handleSelectChild = async (child: ChildInfo) => {
+  const handleSelectChild = (child: ChildInfo) => {
     setSelectedChild(child);
-    // Fetch today's attendance for this child
-    const today = format(new Date(), "yyyy-MM-dd");
-    const { data } = await supabase
-      .from("attendance")
-      .select("id, check_in_am, check_out_am, check_in_pm, check_out_pm, marked_absent")
-      .eq("child_id", child.id)
-      .eq("date", today)
-      .maybeSingle();
-    setChildAttendance(data || null);
+    setPin("");
+    setChildAttendance(null);
     setStep("enter-pin");
   };
 
   const getAttendanceStep = (): AttendanceStep => {
-    const a = childAttendance;
-    if (!a || !a.check_in_am) return "check_in";
-    if (!a.check_out_am && !a.check_out_pm) return "out_choice";
-    if (a.check_out_am && !a.check_in_pm) return "in_school";
-    if (a.check_in_pm && !a.check_out_pm) return "out_pm";
+    const record = childAttendance;
+    if (!record || !record.check_in_am) return "check_in";
+    if (!record.check_out_am && !record.check_out_pm) return "out_choice";
+    if (record.check_out_am && !record.check_in_pm) return "in_school";
+    if (record.check_in_pm && !record.check_out_pm) return "out_pm";
     return "finished";
   };
 
-  const recordTime = async (field: string) => {
-    if (!selectedChild) return;
-    const today = format(new Date(), "yyyy-MM-dd");
-    const now = new Date().toISOString();
+  const loadChildState = async (nextPin: string) => {
+    if (!selectedChild || !kioskToken) return;
 
-    if (childAttendance) {
-      await supabase.from("attendance").update({ [field]: now }).eq("id", childAttendance.id);
-    } else {
-      await supabase.from("attendance").insert({ child_id: selectedChild.id, date: today, [field]: now });
+    const { data, error } = await supabase.rpc("kiosk_get_child_state", {
+      session_token: kioskToken,
+      child_uuid: selectedChild.id,
+      entered_pin: nextPin,
+    });
+
+    if (error) {
+      if (error.message.toLowerCase().includes("expired")) {
+        setStep("expired");
+      } else {
+        toast.error("Incorrect PIN");
+      }
+      setPin("");
+      return;
     }
 
-    const labels: Record<string, string> = {
-      check_in_am: "checked in",
-      check_out_am: "checked out for school",
-      check_in_pm: "checked in from school",
-      check_out_pm: "checked out",
-    };
-    setMessage(`${selectedChild.name} ${labels[field] || "recorded"} at ${format(new Date(), "h:mm a")}`);
+    setChildAttendance(data?.[0] ?? null);
+    setStep("action");
+  };
+
+  const recordAttendance = async (actionName: string) => {
+    if (!selectedChild || !kioskToken) return;
+
+    const { data, error } = await supabase.rpc("kiosk_record_attendance", {
+      session_token: kioskToken,
+      child_uuid: selectedChild.id,
+      entered_pin: pin,
+      action_name: actionName,
+    });
+
+    if (error) {
+      if (error.message.toLowerCase().includes("expired")) {
+        setStep("expired");
+      } else {
+        toast.error(error.message);
+      }
+      return;
+    }
+
+    const result = data?.[0];
+    setMessage(`${result?.message || selectedChild.name} at ${format(new Date(), "h:mm a")}`);
+    if (result) {
+      setChildAttendance({
+        id: result.attendance_id,
+        check_in_am: result.check_in_am,
+        check_out_am: result.check_out_am,
+        check_in_pm: result.check_in_pm,
+        check_out_pm: result.check_out_pm,
+        marked_absent: result.marked_absent,
+      });
+    }
+    void fetchChildren();
     setStep("done");
     setTimeout(resetKiosk, 4000);
   };
 
-  const markAbsent = async () => {
-    if (!selectedChild) return;
-    const today = format(new Date(), "yyyy-MM-dd");
-
-    if (childAttendance) {
-      await supabase.from("attendance").update({ marked_absent: true }).eq("id", childAttendance.id);
-    } else {
-      await supabase.from("attendance").insert({ child_id: selectedChild.id, date: today, marked_absent: true });
-    }
-    setMessage(`${selectedChild.name} marked absent`);
-    setStep("done");
-    setTimeout(resetKiosk, 4000);
-  };
-
-  const pinDigit = (d: string) => {
-    const newPin = pin + d;
-    setPin(newPin);
-    if (newPin.length === 4) {
+  const pinDigit = (digit: string) => {
+    const nextPin = `${pin}${digit}`;
+    setPin(nextPin);
+    if (nextPin.length === 4) {
       setTimeout(() => {
-        if (selectedChild && newPin === selectedChild.family_pin) {
-          setStep("action");
-        } else {
-          toast.error("Incorrect PIN");
-          setPin("");
-        }
-      }, 200);
+        void loadChildState(nextPin);
+      }, 150);
     }
   };
 
   return (
     <div className="kiosk-shell h-[100dvh] overflow-y-auto bg-background px-4 py-4">
       <div className="mx-auto flex min-h-full w-full max-w-lg flex-col justify-center py-4">
-        {/* Header */}
         <div className="text-center mb-8">
           <div className="mb-4 flex justify-end">
             <Button variant="outline" size="sm" className="gap-2" onClick={toggleFullscreen}>
@@ -262,9 +259,18 @@ const Kiosk = () => {
           <p className="text-muted-foreground text-sm">Tap your child's name to check in or out</p>
         </div>
 
+        {step === "expired" && (
+          <Card>
+            <CardContent className="p-6 text-center space-y-3">
+              <p className="font-semibold">Kiosk session unavailable</p>
+              <p className="text-sm text-muted-foreground">Return to the provider dashboard and launch kiosk mode again.</p>
+            </CardContent>
+          </Card>
+        )}
+
         {step === "select-child" && (
           <div className="space-y-2 animate-fade-in">
-            {children.map(child => (
+            {children.map((child) => (
               <Button
                 key={child.id}
                 variant="outline"
@@ -294,25 +300,28 @@ const Kiosk = () => {
                 <p className="text-sm text-muted-foreground">for {selectedChild?.name}</p>
               </div>
               <div className="flex justify-center gap-3">
-                {[0,1,2,3].map(i => (
-                  <div key={i} className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center text-2xl font-bold ${pin.length > i ? "border-primary bg-primary/10" : "border-border"}`}>
-                    {pin.length > i ? "•" : ""}
+                {[0, 1, 2, 3].map((index) => (
+                  <div
+                    key={index}
+                    className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center text-2xl font-bold ${pin.length > index ? "border-primary bg-primary/10" : "border-border"}`}
+                  >
+                    {pin.length > index ? "*" : ""}
                   </div>
                 ))}
               </div>
               <div className="grid grid-cols-3 gap-2">
-                {["1","2","3","4","5","6","7","8","9","","0","⌫"].map(d => (
+                {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "Back"].map((digit) => (
                   <Button
-                    key={d}
+                    key={digit || "blank"}
                     variant="outline"
                     className="h-14 text-xl font-bold"
-                    disabled={d === ""}
+                    disabled={digit === ""}
                     onClick={() => {
-                      if (d === "⌫") setPin(p => p.slice(0,-1));
-                      else if (d) pinDigit(d);
+                      if (digit === "Back") setPin((current) => current.slice(0, -1));
+                      else if (digit) pinDigit(digit);
                     }}
                   >
-                    {d}
+                    {digit}
                   </Button>
                 ))}
               </div>
@@ -324,46 +333,44 @@ const Kiosk = () => {
         )}
 
         {step === "action" && selectedChild && (() => {
-          const aStep = getAttendanceStep();
+          const attendanceStep = getAttendanceStep();
           const isAbsent = childAttendance?.marked_absent;
           return (
             <div className="space-y-3 animate-scale-in">
-              <p className="text-center font-heading font-semibold text-lg mb-4">
-                Hi, parent of {selectedChild.name}!
-              </p>
+              <p className="text-center font-heading font-semibold text-lg mb-4">Hi, parent of {selectedChild.name}!</p>
               {isAbsent && (
                 <p className="text-center text-muted-foreground">Already marked absent today.</p>
               )}
-              {aStep === "finished" && !isAbsent && (
-                <p className="text-center text-muted-foreground">All done for today! ✅</p>
+              {attendanceStep === "finished" && !isAbsent && (
+                <p className="text-center text-muted-foreground">All done for today!</p>
               )}
-              {aStep === "check_in" && !isAbsent && (
+              {attendanceStep === "check_in" && !isAbsent && (
                 <>
-                  <Button className="w-full h-16 text-lg gap-3 bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => recordTime("check_in_am")}>
+                  <Button className="w-full h-16 text-lg gap-3 bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => void recordAttendance("check_in_am")}>
                     <LogIn className="w-6 h-6" /> Check In
                   </Button>
-                  <Button variant="outline" className="w-full h-14 gap-3 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={markAbsent}>
+                  <Button variant="outline" className="w-full h-14 gap-3 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => void recordAttendance("mark_absent")}>
                     <XCircle className="w-5 h-5" /> Mark Absent
                   </Button>
                 </>
               )}
-              {aStep === "out_choice" && (
+              {attendanceStep === "out_choice" && (
                 <>
-                  <Button variant="outline" className="w-full h-14 text-lg gap-3" onClick={() => recordTime("check_out_am")}>
+                  <Button variant="outline" className="w-full h-14 text-lg gap-3" onClick={() => void recordAttendance("check_out_am")}>
                     <LogOut className="w-6 h-6" /> Out (School)
                   </Button>
-                  <Button className="w-full h-16 text-lg gap-3 bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => recordTime("check_out_pm")}>
+                  <Button className="w-full h-16 text-lg gap-3 bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => void recordAttendance("check_out_pm")}>
                     <LogOut className="w-6 h-6" /> Out PM
                   </Button>
                 </>
               )}
-              {aStep === "in_school" && (
-                <Button className="w-full h-16 text-lg gap-3 bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => recordTime("check_in_pm")}>
+              {attendanceStep === "in_school" && (
+                <Button className="w-full h-16 text-lg gap-3 bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => void recordAttendance("check_in_pm")}>
                   <LogIn className="w-6 h-6" /> In (School)
                 </Button>
               )}
-              {aStep === "out_pm" && (
-                <Button className="w-full h-16 text-lg gap-3 bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => recordTime("check_out_pm")}>
+              {attendanceStep === "out_pm" && (
+                <Button className="w-full h-16 text-lg gap-3 bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => void recordAttendance("check_out_pm")}>
                   <LogOut className="w-6 h-6" /> Out PM
                 </Button>
               )}

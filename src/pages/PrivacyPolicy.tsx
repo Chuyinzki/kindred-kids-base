@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { APP_NAME, SUPPORT_EMAIL } from "@/lib/brand";
 
-const LAST_UPDATED = "March 3, 2026";
+const LAST_UPDATED = "April 21, 2026";
 
 const PrivacyPolicy = () => {
   return (
@@ -33,7 +34,7 @@ const PrivacyPolicy = () => {
               <h2 className="font-semibold text-base">2. How We Use Information</h2>
               <p>
                 We use collected information to provide attendance tracking, reporting, kiosk workflows, account
-                access, and customer support. We do not sell personal information.
+                access, billing support, and customer support. We do not sell personal information.
               </p>
             </section>
 
@@ -41,7 +42,7 @@ const PrivacyPolicy = () => {
               <h2 className="font-semibold text-base">3. Data Sharing</h2>
               <p>
                 We share information only with service providers required to run the application (for example hosting,
-                storage, and authentication providers), or when required by law.
+                storage, authentication, and payment providers), or when required by law.
               </p>
             </section>
 
@@ -73,7 +74,7 @@ const PrivacyPolicy = () => {
               <h2 className="font-semibold text-base">7. Your Choices</h2>
               <p>
                 You may access and update account and profile details from within the application. For data requests,
-                contact your system administrator or support contact.
+                contact {SUPPORT_EMAIL}.
               </p>
             </section>
 
@@ -82,6 +83,13 @@ const PrivacyPolicy = () => {
               <p>
                 We may update this Privacy Policy from time to time. Updates will be posted on this page with a revised
                 effective date.
+              </p>
+            </section>
+
+            <section className="space-y-2">
+              <h2 className="font-semibold text-base">9. Contact</h2>
+              <p>
+                Questions about this policy or {APP_NAME} can be sent to {SUPPORT_EMAIL}.
               </p>
             </section>
           </CardContent>

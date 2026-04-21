@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { SUPPORT_EMAIL } from "@/lib/brand";
 
 const CoppaNotice = () => {
   return (
@@ -30,7 +31,7 @@ const CoppaNotice = () => {
             </p>
             <p>
               If you believe child information was submitted improperly, contact your administrator to request review
-              and removal.
+              and removal. Billing and legal questions can be sent to {SUPPORT_EMAIL}.
             </p>
           </CardContent>
         </Card>

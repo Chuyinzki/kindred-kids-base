@@ -12,6 +12,7 @@ describe("Landing page", () => {
     );
 
     expect(screen.getByRole("link", { name: /privacy policy/i })).toHaveAttribute("href", "/privacy");
+    expect(screen.getByRole("link", { name: /terms/i })).toHaveAttribute("href", "/terms");
     expect(screen.getByRole("link", { name: /coppa notice/i })).toHaveAttribute("href", "/coppa-notice");
   });
 });
