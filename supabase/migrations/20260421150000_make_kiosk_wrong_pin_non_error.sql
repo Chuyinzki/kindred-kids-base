@@ -1,3 +1,5 @@
+DROP FUNCTION IF EXISTS public.kiosk_get_child_state(UUID, UUID, TEXT);
+
 CREATE OR REPLACE FUNCTION public.kiosk_get_child_state(session_token UUID, child_uuid UUID, entered_pin TEXT)
 RETURNS TABLE (
   pin_valid BOOLEAN,
@@ -72,6 +74,8 @@ BEGIN
   END IF;
 END;
 $$;
+
+DROP FUNCTION IF EXISTS public.kiosk_record_attendance(UUID, UUID, TEXT, TEXT);
 
 CREATE OR REPLACE FUNCTION public.kiosk_record_attendance(
   session_token UUID,
@@ -197,3 +201,6 @@ BEGIN
     attendance_record.marked_absent;
 END;
 $$;
+
+GRANT EXECUTE ON FUNCTION public.kiosk_get_child_state(UUID, UUID, TEXT) TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION public.kiosk_record_attendance(UUID, UUID, TEXT, TEXT) TO authenticated, anon;
