@@ -31,12 +31,10 @@ describe("Auth page", () => {
     toastErrorMock.mockReset();
   });
 
-  it("shows monetization copy for the free trial", () => {
+  it("shows temporary free access copy", () => {
     render(<Auth />);
 
-    expect(screen.getByText(/14-day free trial/i)).toBeInTheDocument();
-    expect(screen.getByText(/starter/i)).toBeInTheDocument();
-    expect(screen.getByText(/\$24\/month/i)).toBeInTheDocument();
+    expect(screen.getByText(/free access while billing is paused/i)).toBeInTheDocument();
   });
 
   it("submits sign-up through Supabase with the current origin as redirect", async () => {
@@ -64,7 +62,7 @@ describe("Auth page", () => {
     });
 
     expect(toastSuccessMock).toHaveBeenCalledWith(
-      "Check your email to confirm your account and start your free trial.",
+      "Check your email to confirm your account. New accounts currently get free access while billing is paused.",
     );
   });
 

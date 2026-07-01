@@ -3,7 +3,7 @@ import { ArrowRight, Baby, ClipboardCheck, Clock, FileText, MonitorSmartphone, S
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { APP_NAME, PLAN_INTERVAL, PLAN_NAME, PLAN_PRICE, SUPPORT_EMAIL, TRIAL_DAYS } from "@/lib/brand";
+import { APP_NAME, SUPPORT_EMAIL, TRIAL_DAYS } from "@/lib/brand";
 
 const features = [
   {
@@ -55,7 +55,7 @@ const Landing = () => {
             </Link>
             <Link to="/auth">
               <Button size="sm" className="gap-1.5">
-                Start Trial <ArrowRight className="w-3.5 h-3.5" />
+                Get Free Access <ArrowRight className="w-3.5 h-3.5" />
               </Button>
             </Link>
           </div>
@@ -78,7 +78,7 @@ const Landing = () => {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-10">
             <Link to="/auth">
               <Button size="lg" className="gap-2 text-base px-8 h-12 rounded-xl shadow-lg shadow-primary/20">
-                Start {TRIAL_DAYS}-Day Trial <ArrowRight className="w-4 h-4" />
+                Get Free Access <ArrowRight className="w-4 h-4" />
               </Button>
             </Link>
             <a href="#pricing">
@@ -96,8 +96,8 @@ const Landing = () => {
       <section className="border-y border-border bg-card">
         <div className="container px-4 py-8 grid grid-cols-3 gap-6 text-center">
           {[
-            { value: `$${PLAN_PRICE}/${PLAN_INTERVAL}`, label: `${PLAN_NAME} plan` },
-            { value: `${TRIAL_DAYS} days`, label: "Free trial" },
+            { value: "Free", label: "While billing is paused" },
+            { value: `${TRIAL_DAYS} days`, label: "Trial when billing returns" },
             { value: "< 1 min", label: "Daily check-in" },
           ].map((stat) => (
             <div key={stat.label}>
@@ -134,24 +134,23 @@ const Landing = () => {
         <div className="rounded-2xl border border-border bg-card p-6 md:p-8">
           <div className="mb-6 text-center">
             <Badge variant="secondary" className="mb-3">Simple Pricing</Badge>
-            <h2 className="font-heading text-2xl md:text-3xl font-bold">One provider plan, no long-term contract</h2>
+            <h2 className="font-heading text-2xl md:text-3xl font-bold">Free access while billing is paused</h2>
             <p className="mt-2 text-muted-foreground">
-              Start free, then keep your account active for a flat monthly price.
+              New accounts can use the app for free now. Billing can be re-enabled later without changing your data.
             </p>
           </div>
           <div className="mx-auto max-w-xl rounded-2xl border border-primary/20 bg-primary/5 p-6 text-center">
             <p className="font-heading text-3xl font-extrabold">
-              ${PLAN_PRICE}
-              <span className="text-base font-medium text-muted-foreground">/{PLAN_INTERVAL}</span>
+              Free
             </p>
-            <p className="mt-2 font-medium">{PLAN_NAME}</p>
+            <p className="mt-2 font-medium">Temporary free access</p>
             <p className="mt-2 text-sm text-muted-foreground">
-              {TRIAL_DAYS}-day free trial. Attendance, child records, kiosk mode, and monthly reports included.
+              Attendance, child records, kiosk mode, and monthly reports are included while billing is paused.
             </p>
             <div className="mt-6 flex flex-col sm:flex-row justify-center gap-3">
               <Link to="/auth">
                 <Button size="lg" className="gap-2">
-                  Start Free Trial <ArrowRight className="w-4 h-4" />
+                  Get Free Access <ArrowRight className="w-4 h-4" />
                 </Button>
               </Link>
               <a href={`mailto:${SUPPORT_EMAIL}`}>
@@ -188,11 +187,11 @@ const Landing = () => {
           <div className="relative">
             <h2 className="font-heading text-3xl md:text-4xl font-bold text-primary-foreground">Ready to simplify your daycare?</h2>
             <p className="mt-4 text-primary-foreground/80 text-lg max-w-lg mx-auto">
-              Join providers who want cleaner attendance, faster monthly reports, and less daily admin work.
+              Join providers who want cleaner attendance, faster monthly reports, and temporary free access while billing is paused.
             </p>
             <Link to="/auth">
               <Button size="lg" variant="secondary" className="mt-8 text-base px-10 h-12 rounded-xl shadow-lg">
-                Start Your Free Trial
+                Get Free Access
               </Button>
             </Link>
           </div>

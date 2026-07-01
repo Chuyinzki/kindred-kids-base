@@ -127,10 +127,10 @@ describe("Settings page", () => {
 
     render(<SettingsPage />);
 
-    expect(await screen.findByText(/lifetime complimentary access/i)).toBeInTheDocument();
+    expect(await screen.findByText(/temporary free access/i)).toBeInTheDocument();
     expect(screen.getByText(/free forever/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /start subscription/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/marked complimentary/i)).toBeInTheDocument();
+    expect(screen.getByText(/marked complimentary while billing is paused/i)).toBeInTheDocument();
   });
 
   it("opens the customer portal for existing paid accounts", async () => {
