@@ -13,7 +13,7 @@ describe("Legal pages", () => {
     );
 
     expect(screen.getByText(/payment providers/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/support@kindredkids\.app/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/jesusvillegas3@gmail\.com/i).length).toBeGreaterThan(0);
   });
 
   it("renders billing and contact language in terms", () => {
@@ -24,6 +24,6 @@ describe("Legal pages", () => {
     );
 
     expect(screen.getByText(/paid subscriptions renew automatically/i)).toBeInTheDocument();
-    expect(screen.getByText(/support@kindredkids\.app/i)).toBeInTheDocument();
+    expect(screen.getByText(/jesusvillegas3@gmail\.com/i)).toBeInTheDocument();
   });
 });
