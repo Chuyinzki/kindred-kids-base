@@ -54,6 +54,16 @@ CREATE POLICY "Users can update own profile" ON public.profiles
 CREATE POLICY "Users can insert own profile" ON public.profiles
   FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
 
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS is_complimentary BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS complimentary_note TEXT;
+
+UPDATE public.profiles
+SET
+  is_complimentary = true,
+  complimentary_note = COALESCE(complimentary_note, 'Temporary free access while billing is paused')
+WHERE is_complimentary IS DISTINCT FROM true;
+
 -- Auto-create profile on signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
@@ -62,8 +72,8 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  INSERT INTO public.profiles (user_id)
-  VALUES (NEW.id);
+  INSERT INTO public.profiles (user_id, is_complimentary, complimentary_note)
+  VALUES (NEW.id, true, 'Temporary free access while billing is paused');
   -- Default new users to admin role
   INSERT INTO public.user_roles (user_id, role)
   VALUES (NEW.id, 'admin');
