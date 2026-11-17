@@ -37,6 +37,12 @@ describe("Auth page", () => {
     expect(screen.getByText(/free access while billing is paused/i)).toBeInTheDocument();
   });
 
+  it("links to password recovery", () => {
+    render(<Auth />);
+
+    expect(screen.getByRole("link", { name: /forgot password/i })).toHaveAttribute("href", "/forgot-password");
+  });
+
   it("submits sign-up through Supabase with the current origin as redirect", async () => {
     signUpMock.mockResolvedValue({ error: null });
     render(<Auth />);

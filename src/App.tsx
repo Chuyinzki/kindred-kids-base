@@ -9,6 +9,8 @@ import { Analytics } from "@vercel/analytics/react";
 import AppLayout from "@/components/AppLayout";
 import BillingGate from "@/components/BillingGate";
 import Auth from "@/pages/Auth";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
 import Children from "@/pages/Children";
@@ -55,6 +57,8 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/auth" element={<AuthRoute />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/coppa-notice" element={<CoppaNotice />} />
